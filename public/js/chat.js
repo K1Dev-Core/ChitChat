@@ -302,34 +302,39 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
 
-    // ระบบตรวจสอบโค้ดเมื่อ paste
     let pendingCode = null;
     let codeStartPos = null;
 
     messageInput.addEventListener('paste', (e) => {
       const pastedText = (e.clipboardData || window.clipboardData).getData('text');
 
-      // ตรวจสอบว่าเป็นโค้ดหรือไม่
       if (isCode(pastedText)) {
         e.preventDefault();
-        pendingCode = pastedText;
-        codeStartPos = messageInput.selectionStart;
 
-        // แสดง UI สำหรับเลือกภาษา
+        const currentValue = messageInput.value;
+        const selectionStart = messageInput.selectionStart;
+        const selectionEnd = messageInput.selectionEnd;
+
+        const beforeText = currentValue.substring(0, selectionStart);
+        const afterText = currentValue.substring(selectionEnd);
+        const newValue = beforeText + pastedText + afterText;
+
+        messageInput.value = newValue;
+        messageInput.setSelectionRange(selectionStart + pastedText.length, selectionStart + pastedText.length);
+
+        pendingCode = pastedText;
+        codeStartPos = selectionStart;
+
         showCodeLanguageSelector();
       }
     });
 
-    // ฟังก์ชันตรวจสอบว่าเป็นโค้ดหรือไม่
     function isCode(text) {
       if (!text || text.trim().length < 10) return false;
 
-      // ตรวจสอบว่าเป็น markdown code block อยู่แล้วหรือไม่
       if (text.trim().startsWith('```') && text.trim().endsWith('```')) {
-        return false; // ไม่ต้องตรวจสอบอีกเพราะเป็น code block อยู่แล้ว
+        return false;
       }
-
-      // ตรวจสอบ patterns ที่บ่งบอกว่าเป็นโค้ด
       const codePatterns = [
         /^(def|function|class|import|from|const|let|var|public|private|static|void|int|string|bool|float|double|if|else|for|while|return|try|catch|async|await)\s+/m,
         /[{}();=<>[\]]/,
@@ -352,9 +357,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       let codeScore = 0;
       const lines = text.split('\n').filter(line => line.trim().length > 0);
 
-      if (lines.length < 2) return false; // ต้องมีอย่างน้อย 2 บรรทัด
+      if (lines.length < 2) return false;
 
-      // ตรวจสอบแต่ละบรรทัด
       for (const line of lines) {
         for (const pattern of codePatterns) {
           if (pattern.test(line)) {
@@ -364,12 +368,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
 
-      // ถ้ามี pattern ตรงมากกว่า 2 บรรทัด หรือมี pattern หลายแบบ ให้ถือว่าเป็นโค้ด
-      // หรือถ้ามี pattern ตรงและมีบรรทัดมากกว่า 3 บรรทัด
       return codeScore >= 2 || (codeScore >= 1 && lines.length >= 3);
     }
 
-    // แสดง UI สำหรับเลือกภาษา
     function showCodeLanguageSelector() {
       const selector = document.getElementById('codeLanguageSelector');
       if (selector) {
@@ -377,17 +378,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // ซ่อน UI สำหรับเลือกภาษา
     function hideCodeLanguageSelector() {
       const selector = document.getElementById('codeLanguageSelector');
       if (selector) {
         selector.style.display = 'none';
       }
-      pendingCode = null;
-      codeStartPos = null;
     }
-
-    // จัดการการเลือกภาษา
     const codeLanguageSelector = document.getElementById('codeLanguageSelector');
     if (codeLanguageSelector) {
       codeLanguageSelector.addEventListener('click', (e) => {
@@ -398,6 +394,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (lang === 'cancel') {
           hideCodeLanguageSelector();
+          pendingCode = null;
+          codeStartPos = null;
           return;
         }
 
@@ -408,16 +406,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         insertCodeWithLanguage(pendingCode, lang);
         hideCodeLanguageSelector();
+        pendingCode = null;
+        codeStartPos = null;
       });
     }
 
-    // แทรกโค้ดพร้อมภาษา
     function insertCodeWithLanguage(code, language) {
-      if (!code || !codeStartPos) return;
+      if (!code || codeStartPos === null || codeStartPos === undefined) return;
 
       const currentValue = messageInput.value;
+
+      const codeEndPos = codeStartPos + code.length;
       const beforeCode = currentValue.substring(0, codeStartPos);
-      const afterCode = currentValue.substring(messageInput.selectionEnd);
+      const afterCode = currentValue.substring(codeEndPos);
 
       const codeBlock = `\`\`\`${language}\n${code}\n\`\`\``;
       const newValue = beforeCode + codeBlock + afterCode;
@@ -425,15 +426,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       messageInput.value = newValue;
       messageInput.focus();
 
-      // ตั้งค่า cursor position หลัง code block
       const newPos = codeStartPos + codeBlock.length;
       messageInput.setSelectionRange(newPos, newPos);
 
-      // Trigger input event เพื่อปรับความสูง
       messageInput.dispatchEvent(new Event('input'));
     }
-
-    // แสดง modal สำหรับเลือกภาษาทั้งหมด
     function showLanguageModal() {
       const modal = document.getElementById('languageModal');
       const grid = document.getElementById('languageGrid');
@@ -458,6 +455,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           insertCodeWithLanguage(pendingCode, lang);
           closeLanguageModal();
           hideCodeLanguageSelector();
+          pendingCode = null;
+          codeStartPos = null;
         };
         grid.appendChild(item);
       });
@@ -465,7 +464,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       modal.style.display = 'flex';
     }
 
-    // ปิด modal สำหรับเลือกภาษา
     function closeLanguageModal() {
       const modal = document.getElementById('languageModal');
       if (modal) {
@@ -473,7 +471,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // ปิด modal เมื่อคลิกนอก modal
     const languageModal = document.getElementById('languageModal');
     if (languageModal) {
       languageModal.addEventListener('click', (e) => {
@@ -483,7 +480,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
-    // เปิดใช้งานฟังก์ชัน closeLanguageModal ใน global scope
     window.closeLanguageModal = closeLanguageModal;
   }
 

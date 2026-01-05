@@ -170,13 +170,21 @@ async function initializeApp() {
 
       socket.on('whiteboardChange', async (data) => {
         const { channelId, canvasData, changeType, changeData } = data;
-        await chatStore.saveWhiteboardData(channelId, canvasData);
+        
         socket.to(`whiteboard-${channelId}`).emit('whiteboardUpdate', {
           channelId,
           canvasData,
           changeType,
           changeData
         });
+        
+        if (socket.whiteboardSaveTimeout) {
+          clearTimeout(socket.whiteboardSaveTimeout);
+        }
+        socket.whiteboardSaveTimeout = setTimeout(async () => {
+          await chatStore.saveWhiteboardData(channelId, canvasData);
+          socket.whiteboardSaveTimeout = null;
+        }, 1000);
       });
 
       socket.on('whiteboardCursor', (data) => {

@@ -946,7 +946,7 @@ body {
   border: 1px solid #404249;
   border-radius: 8px;
   padding: 12px;
-  margin-top: 8px;
+  margin-bottom: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;

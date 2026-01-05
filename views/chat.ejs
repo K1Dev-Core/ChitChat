@@ -318,6 +318,16 @@
             </div>
             <div class="upload-progress-text" id="uploadProgressText">กำลังอัพโหลด...</div>
           </div>
+          <div class="code-language-selector" id="codeLanguageSelector" style="display: none;">
+            <div class="code-language-label">เลือกภาษา:</div>
+            <div class="code-language-buttons">
+              <button class="code-lang-btn" data-lang="python">Python</button>
+              <button class="code-lang-btn" data-lang="javascript">JavaScript</button>
+              <button class="code-lang-btn" data-lang="java">Java</button>
+              <button class="code-lang-btn" data-lang="other">อื่นๆ</button>
+              <button class="code-lang-btn code-lang-cancel" data-lang="cancel">ยกเลิก</button>
+            </div>
+          </div>
           <div class="input-container">
             <input type="file" id="fileInput" style="display: none;" <%=!isLoggedIn || !currentUser ? 'disabled' : '' %>
             />
@@ -335,16 +345,6 @@
             <textarea id="messageInput" rows="1"
               placeholder="<%= !isLoggedIn || !currentUser ? 'กรุณาเข้าสู่ระบบเพื่อส่งข้อความ' : 'ส่งข้อความถึง #' + channel.name %>"
               <%=!isLoggedIn || !currentUser ? 'disabled' : '' %>></textarea>
-            <div class="code-language-selector" id="codeLanguageSelector" style="display: none;">
-              <div class="code-language-label">เลือกภาษา:</div>
-              <div class="code-language-buttons">
-                <button class="code-lang-btn" data-lang="python">Python</button>
-                <button class="code-lang-btn" data-lang="javascript">JavaScript</button>
-                <button class="code-lang-btn" data-lang="java">Java</button>
-                <button class="code-lang-btn" data-lang="other">อื่นๆ</button>
-                <button class="code-lang-btn code-lang-cancel" data-lang="cancel">ยกเลิก</button>
-              </div>
-            </div>
             <div class="input-actions">
               <div class="expire-time-selector" id="expireTimeSelector">
                 <button class="expire-time-btn" id="expireTimeBtn" type="button" title="ตั้งเวลาลบข้อความ">

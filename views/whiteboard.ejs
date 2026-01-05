@@ -359,6 +359,8 @@
         let isPanning = false;
         let lastPanPoint = { x: 0, y: 0 };
         let remoteCursors = new Map();
+        let updateThrottle = null;
+        let lastUpdateTime = 0;
         <% if (currentUser) { %>
             let currentUser = {
                 id: '<%= currentUser.id %>',
@@ -387,13 +389,14 @@
             });
 
             socket.on('whiteboardUpdate', (data) => {
-                if (data.channelId === currentChannelId && canvas && !isUpdatingFromRemote) {
+                if (data.channelId === currentChannelId && canvas) {
                     isUpdatingFromRemote = true;
 
                     if (data.changeType === 'object:added' && data.changeData) {
                         fabric.util.enlivenObjects([data.changeData], (objects) => {
                             objects.forEach(obj => {
-                                if (!canvas.getObjects().some(o => o.id === obj.id)) {
+                                const existingObj = canvas.getObjects().find(o => o.id === obj.id);
+                                if (!existingObj) {
                                     canvas.add(obj);
                                 }
                             });
@@ -405,6 +408,34 @@
                             existingObj.set(data.changeData);
                             canvas.renderAll();
                         }
+                    } else if (data.changeType === 'object:moving' && data.changeData) {
+                        const existingObj = canvas.getObjects().find(o => o.id === data.changeData.id);
+                        if (existingObj) {
+                            existingObj.set({
+                                left: data.changeData.left,
+                                top: data.changeData.top
+                            });
+                            canvas.renderAll();
+                        }
+                    } else if (data.changeType === 'object:scaling' && data.changeData) {
+                        const existingObj = canvas.getObjects().find(o => o.id === data.changeData.id);
+                        if (existingObj) {
+                            existingObj.set({
+                                scaleX: data.changeData.scaleX,
+                                scaleY: data.changeData.scaleY,
+                                left: data.changeData.left,
+                                top: data.changeData.top
+                            });
+                            canvas.renderAll();
+                        }
+                    } else if (data.changeType === 'object:rotating' && data.changeData) {
+                        const existingObj = canvas.getObjects().find(o => o.id === data.changeData.id);
+                        if (existingObj) {
+                            existingObj.set({
+                                angle: data.changeData.angle
+                            });
+                            canvas.renderAll();
+                        }
                     } else if (data.changeType === 'object:removed' && data.changeData) {
                         const existingObj = canvas.getObjects().find(o => o.id === data.changeData.id);
                         if (existingObj) {
@@ -414,7 +445,8 @@
                     } else if (data.changeType === 'path:created' && data.changeData) {
                         fabric.util.enlivenObjects([data.changeData], (objects) => {
                             objects.forEach(obj => {
-                                if (!canvas.getObjects().some(o => o.id === obj.id)) {
+                                const existingObj = canvas.getObjects().find(o => o.id === obj.id);
+                                if (!existingObj) {
                                     canvas.add(obj);
                                 }
                             });
@@ -428,7 +460,7 @@
 
                     setTimeout(() => {
                         isUpdatingFromRemote = false;
-                    }, 100);
+                    }, 50);
                 }
             });
 
@@ -457,52 +489,71 @@
                     if (!e.target.id) {
                         e.target.id = `obj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                     }
-                    const json = canvas.toJSON();
-                    socket.emit('whiteboardChange', {
-                        channelId: currentChannelId,
-                        canvasData: json,
-                        changeType: 'object:added',
-                        changeData: e.target.toObject()
-                    });
+                    sendWhiteboardUpdate('object:added', e.target.toObject());
                 }
             });
+
+            function sendWhiteboardUpdate(changeType, changeData) {
+                if (isUpdatingFromRemote) return;
+
+                const now = Date.now();
+                const timeSinceLastUpdate = now - lastUpdateTime;
+
+                if (timeSinceLastUpdate < 50) {
+                    if (updateThrottle) {
+                        clearTimeout(updateThrottle);
+                    }
+                    updateThrottle = setTimeout(() => {
+                        sendWhiteboardUpdate(changeType, changeData);
+                    }, 50 - timeSinceLastUpdate);
+                    return;
+                }
+
+                lastUpdateTime = now;
+                const json = canvas.toJSON();
+                socket.emit('whiteboardChange', {
+                    channelId: currentChannelId,
+                    canvasData: json,
+                    changeType: changeType,
+                    changeData: changeData
+                });
+            }
 
             canvas.on('object:modified', (e) => {
                 if (!isUpdatingFromRemote && e.target) {
-                    const json = canvas.toJSON();
-                    socket.emit('whiteboardChange', {
-                        channelId: currentChannelId,
-                        canvasData: json,
-                        changeType: 'object:modified',
-                        changeData: e.target.toObject()
-                    });
+                    sendWhiteboardUpdate('object:modified', e.target.toObject());
                 }
             });
 
-            canvas.on('object:removed', (e) => {
+            canvas.on('object:moving', (e) => {
                 if (!isUpdatingFromRemote && e.target) {
-                    const json = canvas.toJSON();
-                    socket.emit('whiteboardChange', {
-                        channelId: currentChannelId,
-                        canvasData: json,
-                        changeType: 'object:removed',
-                        changeData: { id: e.target.id }
-                    });
+                    sendWhiteboardUpdate('object:moving', e.target.toObject());
                 }
             });
 
+            canvas.on('object:scaling', (e) => {
+                if (!isUpdatingFromRemote && e.target) {
+                    sendWhiteboardUpdate('object:scaling', e.target.toObject());
+                }
+            });
+
+            canvas.on('object:rotating', (e) => {
+                if (!isUpdatingFromRemote && e.target) {
+                    sendWhiteboardUpdate('object:rotating', e.target.toObject());
+                }
+            });
             canvas.on('path:created', (e) => {
                 if (!isUpdatingFromRemote && e.path) {
                     if (!e.path.id) {
                         e.path.id = `path_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                     }
-                    const json = canvas.toJSON();
-                    socket.emit('whiteboardChange', {
-                        channelId: currentChannelId,
-                        canvasData: json,
-                        changeType: 'path:created',
-                        changeData: e.path.toObject()
-                    });
+                    sendWhiteboardUpdate('path:created', e.path.toObject());
+                }
+            });
+
+            canvas.on('object:removed', (e) => {
+                if (!isUpdatingFromRemote && e.target) {
+                    sendWhiteboardUpdate('object:removed', { id: e.target.id });
                 }
             });
 
@@ -690,6 +741,9 @@
                             canvas.add(img);
                             canvas.setActiveObject(img);
                             canvas.renderAll();
+                            if (!isUpdatingFromRemote) {
+                                sendWhiteboardUpdate('object:added', img.toObject());
+                            }
                         });
                     };
                     reader.readAsDataURL(file);
@@ -701,9 +755,7 @@
                 deleteSelectedObjects();
             });
 
-            // เพิ่มการรองรับการลบด้วยคีย์บอร์ด (Delete/Backspace)
             document.addEventListener('keydown', (e) => {
-                // ตรวจสอบว่าไม่ได้กำลังพิมพ์ใน input หรือ textarea
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
                     return;
                 }
@@ -719,16 +771,14 @@
             if (!canvas) return;
 
             const activeObjects = canvas.getActiveObjects();
-
+            
             if (activeObjects && activeObjects.length > 0) {
-                // ลบหลายวัตถุที่เลือกไว้
                 activeObjects.forEach(obj => {
                     canvas.remove(obj);
                 });
                 canvas.discardActiveObject();
                 canvas.renderAll();
             } else {
-                // ลบวัตถุที่เลือกไว้เพียงตัวเดียว
                 const activeObject = canvas.getActiveObject();
                 if (activeObject) {
                     canvas.remove(activeObject);
@@ -776,6 +826,9 @@
             canvas.add(text);
             canvas.setActiveObject(text);
             canvas.renderAll();
+            if (!isUpdatingFromRemote) {
+                sendWhiteboardUpdate('object:added', text.toObject());
+            }
         }
 
         async function loadWhiteboard() {
@@ -844,5 +897,7 @@
         });
     </script>
 </body>
+
+</html>
 
 </html>
