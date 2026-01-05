@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดการผู้ใช้ - Admin</title>
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+
+<body>
+    <div class="admin-container">
+        <nav class="admin-sidebar">
+            <div class="admin-logo">Admin Panel</div>
+            <div class="admin-nav">
+                <a href="/admin/dashboard" class="admin-nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    <span>แดชบอร์ด</span>
+                </a>
+                <a href="/admin/users" class="admin-nav-item active">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>จัดการผู้ใช้</span>
+                </a>
+                <a href="/admin/servers" class="admin-nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                    <span>จัดการเซิร์ฟเวอร์</span>
+                </a>
+                <a href="/admin/channels" class="admin-nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="4" y1="9" x2="20" y2="9"></line>
+                        <line x1="4" y1="15" x2="20" y2="15"></line>
+                        <line x1="10" y1="3" x2="8" y2="21"></line>
+                        <line x1="16" y1="3" x2="14" y2="21"></line>
+                    </svg>
+                    <span>จัดการช่อง</span>
+                </a>
+                <a href="/admin/messages" class="admin-nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>จัดการข้อความ</span>
+                </a>
+            </div>
+            <div class="admin-nav-footer">
+                <a href="/" class="admin-nav-item" target="_blank">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                    <span>ไปที่แชท</span>
+                </a>
+                <button id="adminLogoutBtn" class="admin-nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>ออกจากระบบ</span>
+                </button>
+            </div>
+        </nav>
+
+        <main class="admin-main">
+            <header class="admin-header">
+                <h1>จัดการผู้ใช้</h1>
+            </header>
+
+            <div class="admin-content">
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ชื่อ</th>
+                                <th>สถานะ</th>
+                                <th>บทบาท</th>
+                                <th>จำนวนข้อความ</th>
+                                <th>การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% users.forEach(user=> { %>
+                                <tr>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <img src="<%= user.avatar %>" alt="<%= user.name %>"
+                                                style="width: 32px; height: 32px; border-radius: 50%;" />
+                                            <span>
+                                                <%= user.name %>
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <% if (user.status==='banned' ) { %>
+                                            <span class="admin-badge banned">ถูกแบน</span>
+                                            <% } else if (user.status==='online' ) { %>
+                                                <span class="admin-badge online">ออนไลน์</span>
+                                                <% } else { %>
+                                                    <span class="admin-badge offline">ออฟไลน์</span>
+                                                    <% } %>
+                                    </td>
+                                    <td>
+                                        <%= user.role %>
+                                    </td>
+                                    <td>
+                                        <span style="color: #949BA4; font-size: 14px;">
+                                            <%= user.messageCount || 0 %> ข้อความ
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                                            <% if (user.status==='banned' ) { %>
+                                                <button class="admin-btn admin-btn-success"
+                                                    onclick="openUnbanModal('<%= user.id %>', '<%= user.name %>')">ยกเลิกการแบน</button>
+                                                <% } else { %>
+                                                    <button class="admin-btn admin-btn-danger"
+                                                        onclick="openBanModal('<%= user.id %>', '<%= user.name %>', <%= user.messageCount || 0 %>)">แบน</button>
+                                                    <% } %>
+                                                        <button class="admin-btn admin-btn-danger"
+                                                            onclick="openDeleteModal('<%= user.id %>', '<%= user.name %>', <%= user.messageCount || 0 %>)">ลบ</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="confirmModal" class="admin-modal">
+        <div class="admin-modal-content">
+            <div class="admin-modal-header">
+                <h2 class="admin-modal-title" id="confirmModalTitle">ยืนยันการดำเนินการ</h2>
+                <button class="admin-modal-close" onclick="closeConfirmModal()">×</button>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <p id="confirmModalMessage" style="color: #F2F3F5; font-size: 14px; line-height: 1.5;"></p>
+            </div>
+            <div id="deleteMessagesOption" style="display: none; margin-bottom: 20px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="deleteMessagesCheckbox" style="cursor: pointer;">
+                    <span style="color: #F2F3F5; font-size: 14px;">ลบข้อความและไฟล์ทั้งหมดของผู้ใช้นี้ด้วย</span>
+                </label>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button type="button" class="admin-btn" onclick="closeConfirmModal()"
+                    style="background: #35373C; color: #F2F3F5;">ยกเลิก</button>
+                <button type="button" class="admin-btn admin-btn-danger" id="confirmModalButton">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/modal.js"></script>
+    <script src="/js/admin.js"></script>
+    <script>
+        let currentAction = null;
+        let currentUserId = null;
+
+        function openBanModal(userId, userName, messageCount) {
+            currentAction = 'ban';
+            currentUserId = userId;
+            document.getElementById('confirmModalTitle').textContent = 'ยืนยันการแบนผู้ใช้';
+            document.getElementById('confirmModalMessage').textContent = `คุณต้องการแบนผู้ใช้ "${userName}" หรือไม่?${messageCount > 0 ? `\nผู้ใช้นี้มีข้อความทั้งหมด ${messageCount} ข้อความ` : ''}`;
+            document.getElementById('deleteMessagesOption').style.display = 'none';
+            document.getElementById('confirmModalButton').textContent = 'แบน';
+            document.getElementById('confirmModalButton').className = 'admin-btn admin-btn-danger';
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        function openUnbanModal(userId, userName) {
+            currentAction = 'unban';
+            currentUserId = userId;
+            document.getElementById('confirmModalTitle').textContent = 'ยืนยันการยกเลิกการแบน';
+            document.getElementById('confirmModalMessage').textContent = `คุณต้องการยกเลิกการแบนผู้ใช้ "${userName}" หรือไม่?`;
+            document.getElementById('deleteMessagesOption').style.display = 'none';
+            document.getElementById('confirmModalButton').textContent = 'ยกเลิกการแบน';
+            document.getElementById('confirmModalButton').className = 'admin-btn admin-btn-success';
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        function openDeleteModal(userId, userName, messageCount) {
+            currentAction = 'delete';
+            currentUserId = userId;
+            document.getElementById('confirmModalTitle').textContent = 'ยืนยันการลบผู้ใช้';
+            document.getElementById('confirmModalMessage').textContent = `คุณต้องการลบผู้ใช้ "${userName}" หรือไม่?${messageCount > 0 ? `\nผู้ใช้นี้มีข้อความทั้งหมด ${messageCount} ข้อความ` : ''}\n\n⚠️ การลบผู้ใช้นี้จะไม่สามารถกู้คืนได้`;
+            document.getElementById('deleteMessagesOption').style.display = messageCount > 0 ? 'block' : 'none';
+            document.getElementById('deleteMessagesCheckbox').checked = false;
+            document.getElementById('confirmModalButton').textContent = 'ลบ';
+            document.getElementById('confirmModalButton').className = 'admin-btn admin-btn-danger';
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.remove('active');
+            currentAction = null;
+            currentUserId = null;
+        }
+
+        document.getElementById('confirmModalButton').addEventListener('click', () => {
+            if (!currentAction || !currentUserId) return;
+
+            if (currentAction === 'ban') {
+                fetch('/admin/users/ban', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUserId })
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('แบนผู้ใช้สำเร็จ', 'success');
+                            closeConfirmModal();
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            showNotification(data.error || 'เกิดข้อผิดพลาด', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('เกิดข้อผิดพลาด', 'error');
+                    });
+            } else if (currentAction === 'unban') {
+                fetch('/admin/users/unban', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUserId })
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('ยกเลิกการแบนสำเร็จ', 'success');
+                            closeConfirmModal();
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            showNotification(data.error || 'เกิดข้อผิดพลาด', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('เกิดข้อผิดพลาด', 'error');
+                    });
+            } else if (currentAction === 'delete') {
+                const deleteMessages = document.getElementById('deleteMessagesCheckbox').checked;
+                fetch('/admin/users/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUserId, deleteMessages })
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('ลบผู้ใช้สำเร็จ', 'success');
+                            closeConfirmModal();
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            showNotification(data.error || 'เกิดข้อผิดพลาด', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('เกิดข้อผิดพลาด', 'error');
+                    });
+            }
+        });
+
+        document.getElementById('confirmModal').addEventListener('click', (e) => {
+            if (e.target.id === 'confirmModal') {
+                closeConfirmModal();
+            }
+        });
+    </script>
+</body>
+
+</html>

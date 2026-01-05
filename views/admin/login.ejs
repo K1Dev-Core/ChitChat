@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="admin-login-page">
+  <div class="admin-login-container">
+    <div class="admin-login-box">
+      <h1 class="admin-login-title">Admin Panel</h1>
+      <p class="admin-login-subtitle">กรุณาใส่รหัสผ่านผู้ดูแลระบบ</p>
+      <form id="adminLoginForm" class="admin-login-form">
+        <input 
+          type="password" 
+          id="adminPasswordInput" 
+          class="admin-login-input" 
+          placeholder="รหัสผ่าน" 
+          required 
+          autofocus
+        />
+        <button type="submit" class="admin-login-button">เข้าสู่ระบบ</button>
+      </form>
+    </div>
+  </div>
+  <script src="/js/modal.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>
+

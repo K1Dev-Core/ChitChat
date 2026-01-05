@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= server.name %> - <%= channel.name %>
+    </title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/modal.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        .whiteboard-toolbar {
+            padding: 8px 16px;
+            background: #2B2D31;
+            border-bottom: 1px solid #1E1F22;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            padding: 0 8px;
+            border-right: 1px solid #1E1F22;
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+        }
+
+        .toolbar-btn {
+            background: transparent;
+            border: none;
+            color: #949BA4;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .toolbar-btn:hover {
+            background: #35373C;
+            color: #F2F3F5;
+        }
+
+        .toolbar-btn.active {
+            background: #5865F2;
+            color: white;
+        }
+
+        .toolbar-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .toolbar-btn:disabled:hover {
+            background: transparent;
+            color: #949BA4;
+        }
+
+        .toolbar-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        #whiteboard-canvas {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #1E1F22;
+            cursor: grab;
+        }
+
+        #whiteboard-canvas:active {
+            cursor: grabbing;
+        }
+
+        .whiteboard-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .whiteboard-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #1E1F22;
+        }
+
+        .remote-cursor {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 1000;
+            transition: transform 0.1s ease-out;
+        }
+
+        .remote-cursor svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .remote-cursor-label {
+            position: absolute;
+            top: 22px;
+            left: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        #fileInputWhiteboard {
+            display: none;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .zoom-btn {
+            background: #2B2D31;
+            border: 1px solid #1E1F22;
+            color: #F2F3F5;
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .zoom-btn:hover {
+            background: #35373C;
+        }
+
+        .zoom-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-container">
+        <nav class="server-sidebar">
+            <% allServers.forEach(s=> { %>
+                <a href="/?server=<%= s.id %>&channel=<%= serverChannels.length > 0 ? serverChannels[0].id : 'c1' %>"
+                    class="server-item <%= s.id === selectedServerId ? 'active' : '' %>">
+                    <div class="server-icon">
+                        <img src="<%= s.avatar || 'https://placehold.co/100/5865F2/white?text=' + (s.name ? s.name.charAt(0) : '?') %>"
+                            alt="<%= s.name %>" />
+                    </div>
+                    <div class="active-pill"></div>
+                </a>
+                <% }); %>
+                    <div class="divider"></div>
+                    <button class="add-server-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+        </nav>
+
+        <div class="channel-sidebar-overlay" id="channelSidebarOverlay"></div>
+
+        <div class="channel-sidebar">
+            <header class="channel-header">
+                <h1>
+                    <%= server.name %>
+                </h1>
+                <div class="channel-header-actions">
+                    <button class="channel-sidebar-close" id="channelSidebarClose">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="channel-list">
+                <div class="channel-category">
+                    <span>ช่องข้อความ</span>
+                </div>
+                <% serverChannels.forEach(ch=> { %>
+                    <a href="/?server=<%= selectedServerId %>&channel=<%= ch.id %>"
+                        class="channel-item <%= ch.id === selectedChannelId ? 'active' : '' %>">
+                        <% if (ch.type==='whiteboard' ) { %>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="9" y1="3" x2="9" y2="21"></line>
+                                <line x1="3" y1="9" x2="21" y2="9"></line>
+                            </svg>
+                            <% } else { %>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <line x1="4" y1="9" x2="20" y2="9"></line>
+                                    <line x1="4" y1="15" x2="20" y2="15"></line>
+                                    <line x1="10" y1="3" x2="8" y2="21"></line>
+                                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                                </svg>
+                                <% } %>
+                                    <span>
+                                        <%= ch.name %>
+                                    </span>
+                    </a>
+                    <% }); %>
+            </div>
+        </div>
+
+        <div class="whiteboard-main">
+            <div class="chat-header">
+                <div class="chat-header-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        class="channel-icon">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                    </svg>
+                    <h3>
+                        <%= channel.name %>
+                    </h3>
+                </div>
+            </div>
+
+            <div class="whiteboard-toolbar">
+                <div class="toolbar-group">
+                    <button class="toolbar-btn active" id="selectTool" title="เลือก/ย้าย">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="drawTool" title="วาด">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                            <path d="M2 2l7.586 7.586"></path>
+                            <circle cx="11" cy="11" r="2"></circle>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="textTool" title="ข้อความ">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                            <line x1="9" y1="20" x2="15" y2="20"></line>
+                            <line x1="12" y1="4" x2="12" y2="20"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="imageTool" title="อัพโหลดภาพ">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="deleteTool" title="ลบ (Delete/Backspace)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="toolbar-group" style="margin-left: auto;">
+                    <button class="toolbar-btn" id="clearBtn" title="ล้างทั้งหมด">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="whiteboard-wrapper" id="whiteboardWrapper">
+                <canvas id="whiteboard-canvas"></canvas>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoomInBtn" title="ซูมเข้า">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            <line x1="11" y1="8" x2="11" y2="14"></line>
+                            <line x1="8" y1="11" x2="14" y2="11"></line>
+                        </svg>
+                    </button>
+                    <button class="zoom-btn" id="zoomOutBtn" title="ซูมออก">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            <line x1="8" y1="11" x2="14" y2="11"></line>
+                        </svg>
+                    </button>
+                    <button class="zoom-btn" id="resetZoomBtn" title="รีเซ็ต">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                            <path d="M21 3v5h-5"></path>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                            <path d="M3 21v-5h5"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="fileInputWhiteboard" accept="image/*">
+
+    <script>
+        let canvas = null;
+        let currentChannelId = '<%= selectedChannelId %>';
+        let currentMode = 'select';
+        let socket = null;
+        let isDrawing = false;
+        let isUpdatingFromRemote = false;
+        let zoomLevel = 1;
+        let isPanning = false;
+        let lastPanPoint = { x: 0, y: 0 };
+        let remoteCursors = new Map();
+        <% if (currentUser) { %>
+            let currentUser = {
+                id: '<%= currentUser.id %>',
+                name: '<%= currentUser.name %>',
+                avatar: '<%= currentUser.avatar %>'
+            };
+        <% } else { %>
+            let currentUser = null;
+        <% } %>
+            let userColor = currentUser ? generateColorFromString(currentUser.id) : '#5865F2';
+
+        function generateColorFromString(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const hue = Math.abs(hash % 360);
+            return `hsl(${hue}, 70%, 60%)`;
+        }
+
+        window.addEventListener('load', () => {
+            socket = io();
+
+            socket.on('connect', () => {
+                socket.emit('joinWhiteboard', { channelId: currentChannelId });
+            });
+
+            socket.on('whiteboardUpdate', (data) => {
+                if (data.channelId === currentChannelId && canvas && !isUpdatingFromRemote) {
+                    isUpdatingFromRemote = true;
+
+                    if (data.changeType === 'object:added' && data.changeData) {
+                        fabric.util.enlivenObjects([data.changeData], (objects) => {
+                            objects.forEach(obj => {
+                                if (!canvas.getObjects().some(o => o.id === obj.id)) {
+                                    canvas.add(obj);
+                                }
+                            });
+                            canvas.renderAll();
+                        });
+                    } else if (data.changeType === 'object:modified' && data.changeData) {
+                        const existingObj = canvas.getObjects().find(o => o.id === data.changeData.id);
+                        if (existingObj) {
+                            existingObj.set(data.changeData);
+                            canvas.renderAll();
+                        }
+                    } else if (data.changeType === 'object:removed' && data.changeData) {
+                        const existingObj = canvas.getObjects().find(o => o.id === data.changeData.id);
+                        if (existingObj) {
+                            canvas.remove(existingObj);
+                            canvas.renderAll();
+                        }
+                    } else if (data.changeType === 'path:created' && data.changeData) {
+                        fabric.util.enlivenObjects([data.changeData], (objects) => {
+                            objects.forEach(obj => {
+                                if (!canvas.getObjects().some(o => o.id === obj.id)) {
+                                    canvas.add(obj);
+                                }
+                            });
+                            canvas.renderAll();
+                        });
+                    } else if (!data.changeType) {
+                        canvas.loadFromJSON(data.canvasData, () => {
+                            canvas.renderAll();
+                        });
+                    }
+
+                    setTimeout(() => {
+                        isUpdatingFromRemote = false;
+                    }, 100);
+                }
+            });
+
+            socket.on('userCursor', (data) => {
+                if (data.channelId === currentChannelId && data.userId !== currentUser?.id) {
+                    updateRemoteCursor(data.userId, data.userName, data.userColor, data.x, data.y);
+                }
+            });
+
+            const container = document.getElementById('whiteboard-canvas');
+            const wrapper = document.getElementById('whiteboardWrapper');
+
+            canvas = new fabric.Canvas(container, {
+                width: wrapper.offsetWidth,
+                height: wrapper.offsetHeight,
+                backgroundColor: '#1E1F22',
+                selection: true,
+                preserveObjectStacking: true
+            });
+
+            canvas.setWidth(wrapper.offsetWidth);
+            canvas.setHeight(wrapper.offsetHeight);
+
+            canvas.on('object:added', (e) => {
+                if (!isUpdatingFromRemote && e.target) {
+                    if (!e.target.id) {
+                        e.target.id = `obj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    }
+                    const json = canvas.toJSON();
+                    socket.emit('whiteboardChange', {
+                        channelId: currentChannelId,
+                        canvasData: json,
+                        changeType: 'object:added',
+                        changeData: e.target.toObject()
+                    });
+                }
+            });
+
+            canvas.on('object:modified', (e) => {
+                if (!isUpdatingFromRemote && e.target) {
+                    const json = canvas.toJSON();
+                    socket.emit('whiteboardChange', {
+                        channelId: currentChannelId,
+                        canvasData: json,
+                        changeType: 'object:modified',
+                        changeData: e.target.toObject()
+                    });
+                }
+            });
+
+            canvas.on('object:removed', (e) => {
+                if (!isUpdatingFromRemote && e.target) {
+                    const json = canvas.toJSON();
+                    socket.emit('whiteboardChange', {
+                        channelId: currentChannelId,
+                        canvasData: json,
+                        changeType: 'object:removed',
+                        changeData: { id: e.target.id }
+                    });
+                }
+            });
+
+            canvas.on('path:created', (e) => {
+                if (!isUpdatingFromRemote && e.path) {
+                    if (!e.path.id) {
+                        e.path.id = `path_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    }
+                    const json = canvas.toJSON();
+                    socket.emit('whiteboardChange', {
+                        channelId: currentChannelId,
+                        canvasData: json,
+                        changeType: 'path:created',
+                        changeData: e.path.toObject()
+                    });
+                }
+            });
+
+            canvas.freeDrawingBrush.width = 3;
+            canvas.freeDrawingBrush.color = userColor;
+
+            setupZoomAndPan();
+            setupCursorTracking();
+            setupToolbar();
+
+            window.addEventListener('resize', () => {
+                canvas.setDimensions({
+                    width: wrapper.offsetWidth,
+                    height: wrapper.offsetHeight
+                });
+            });
+
+            loadWhiteboard();
+        });
+
+        function setupZoomAndPan() {
+            const wrapper = document.getElementById('whiteboardWrapper');
+
+            canvas.on('mouse:wheel', (opt) => {
+                const delta = opt.e.deltaY;
+                let zoom = canvas.getZoom();
+                zoom *= 0.999 ** delta;
+                zoom = Math.max(0.1, Math.min(5, zoom));
+
+                const point = new fabric.Point(opt.e.offsetX, opt.e.offsetY);
+                canvas.zoomToPoint(point, zoom);
+                zoomLevel = zoom;
+
+                opt.e.preventDefault();
+                opt.e.stopPropagation();
+            });
+
+            canvas.on('mouse:down', (opt) => {
+                if (opt.e.button === 1 || (opt.e.button === 0 && opt.e.ctrlKey)) {
+                    isPanning = true;
+                    lastPanPoint = { x: opt.e.clientX, y: opt.e.clientY };
+                    canvas.selection = false;
+                    canvas.defaultCursor = 'grabbing';
+                }
+            });
+
+            canvas.on('mouse:move', (opt) => {
+                if (isPanning) {
+                    const e = opt.e;
+                    const vpt = canvas.viewportTransform;
+                    vpt[4] += e.clientX - lastPanPoint.x;
+                    vpt[5] += e.clientY - lastPanPoint.y;
+                    canvas.requestRenderAll();
+                    lastPanPoint = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            canvas.on('mouse:up', () => {
+                if (isPanning) {
+                    isPanning = false;
+                    canvas.selection = true;
+                    canvas.defaultCursor = 'default';
+                }
+            });
+
+            document.getElementById('zoomInBtn').addEventListener('click', () => {
+                const center = canvas.getCenter();
+                const zoom = Math.min(5, zoomLevel * 1.2);
+                canvas.zoomToPoint(center, zoom);
+                zoomLevel = zoom;
+            });
+
+            document.getElementById('zoomOutBtn').addEventListener('click', () => {
+                const center = canvas.getCenter();
+                const zoom = Math.max(0.1, zoomLevel / 1.2);
+                canvas.zoomToPoint(center, zoom);
+                zoomLevel = zoom;
+            });
+
+            document.getElementById('resetZoomBtn').addEventListener('click', () => {
+                canvas.setZoom(1);
+                canvas.viewportTransform[4] = 0;
+                canvas.viewportTransform[5] = 0;
+                zoomLevel = 1;
+                canvas.renderAll();
+            });
+        }
+
+        function setupCursorTracking() {
+            const wrapper = document.getElementById('whiteboardWrapper');
+
+            canvas.on('mouse:move', (opt) => {
+                if (socket && currentUser) {
+                    const wrapperRect = wrapper.getBoundingClientRect();
+                    const x = opt.e.clientX - wrapperRect.left;
+                    const y = opt.e.clientY - wrapperRect.top;
+
+                    socket.emit('whiteboardCursor', {
+                        channelId: currentChannelId,
+                        x: x,
+                        y: y,
+                        userId: currentUser.id,
+                        userName: currentUser.name,
+                        userColor: userColor
+                    });
+                }
+            });
+        }
+
+        function updateRemoteCursor(userId, userName, userColor, x, y) {
+            let cursor = remoteCursors.get(userId);
+
+            if (!cursor) {
+                cursor = document.createElement('div');
+                cursor.className = 'remote-cursor';
+                cursor.style.color = userColor;
+                cursor.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
+                    </svg>
+                    <div class="remote-cursor-label" style="background: ${userColor}">${userName}</div>
+                `;
+                document.getElementById('whiteboardWrapper').appendChild(cursor);
+                remoteCursors.set(userId, cursor);
+            }
+
+            cursor.style.left = x + 'px';
+            cursor.style.top = y + 'px';
+
+            clearTimeout(cursor.timeout);
+            cursor.timeout = setTimeout(() => {
+                if (cursor && cursor.parentNode) {
+                    cursor.parentNode.removeChild(cursor);
+                    remoteCursors.delete(userId);
+                }
+            }, 2000);
+        }
+
+        function setupToolbar() {
+            document.getElementById('selectTool').addEventListener('click', () => {
+                setMode('select');
+            });
+
+            document.getElementById('drawTool').addEventListener('click', () => {
+                setMode('draw');
+            });
+
+            document.getElementById('textTool').addEventListener('click', () => {
+                setMode('text');
+            });
+
+            document.getElementById('imageTool').addEventListener('click', () => {
+                document.getElementById('fileInputWhiteboard').click();
+            });
+
+            document.getElementById('clearBtn').addEventListener('click', async () => {
+                const confirmed = await showConfirmModal({
+                    title: 'ยืนยันการล้าง',
+                    message: 'คุณต้องการล้าง whiteboard ทั้งหมดหรือไม่?',
+                    confirmText: 'ล้าง',
+                    cancelText: 'ยกเลิก',
+                    danger: true
+                });
+
+                if (!confirmed) return;
+                if (canvas) {
+                    canvas.clear();
+                    canvas.backgroundColor = '#1E1F22';
+                    const json = canvas.toJSON();
+                    socket.emit('whiteboardChange', {
+                        channelId: currentChannelId,
+                        canvasData: json
+                    });
+                }
+            });
+
+            document.getElementById('fileInputWhiteboard').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        fabric.Image.fromURL(event.target.result, (img) => {
+                            img.scale(0.5);
+                            img.id = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                            canvas.add(img);
+                            canvas.setActiveObject(img);
+                            canvas.renderAll();
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                }
+                e.target.value = '';
+            });
+
+            document.getElementById('deleteTool').addEventListener('click', () => {
+                deleteSelectedObjects();
+            });
+
+            // เพิ่มการรองรับการลบด้วยคีย์บอร์ด (Delete/Backspace)
+            document.addEventListener('keydown', (e) => {
+                // ตรวจสอบว่าไม่ได้กำลังพิมพ์ใน input หรือ textarea
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    return;
+                }
+
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    e.preventDefault();
+                    deleteSelectedObjects();
+                }
+            });
+        }
+
+        function deleteSelectedObjects() {
+            if (!canvas) return;
+
+            const activeObjects = canvas.getActiveObjects();
+
+            if (activeObjects && activeObjects.length > 0) {
+                // ลบหลายวัตถุที่เลือกไว้
+                activeObjects.forEach(obj => {
+                    canvas.remove(obj);
+                });
+                canvas.discardActiveObject();
+                canvas.renderAll();
+            } else {
+                // ลบวัตถุที่เลือกไว้เพียงตัวเดียว
+                const activeObject = canvas.getActiveObject();
+                if (activeObject) {
+                    canvas.remove(activeObject);
+                    canvas.renderAll();
+                }
+            }
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+
+            document.querySelectorAll('.toolbar-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            if (mode === 'select') {
+                document.getElementById('selectTool').classList.add('active');
+                canvas.isDrawingMode = false;
+                canvas.selection = true;
+                canvas.defaultCursor = 'default';
+            } else if (mode === 'draw') {
+                document.getElementById('drawTool').classList.add('active');
+                canvas.isDrawingMode = true;
+                canvas.selection = false;
+                canvas.freeDrawingBrush.width = 3;
+                canvas.freeDrawingBrush.color = userColor;
+            } else if (mode === 'text') {
+                document.getElementById('textTool').classList.add('active');
+                canvas.isDrawingMode = false;
+                canvas.selection = true;
+                addText();
+            }
+        }
+
+        function addText() {
+            const text = new fabric.IText('คลิกเพื่อแก้ไข', {
+                left: 100,
+                top: 100,
+                fontFamily: 'Arial',
+                fontSize: 20,
+                fill: '#F2F3F5',
+                editable: true
+            });
+            text.id = `text_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            canvas.renderAll();
+        }
+
+        async function loadWhiteboard() {
+            try {
+                const response = await fetch(`/api/whiteboard/${currentChannelId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && canvas) {
+                        canvas.loadFromJSON(data, () => {
+                            canvas.renderAll();
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading whiteboard:', error);
+            }
+        }
+
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const channelSidebar = document.querySelector('.channel-sidebar');
+        const channelSidebarOverlay = document.getElementById('channelSidebarOverlay');
+        const channelSidebarClose = document.getElementById('channelSidebarClose');
+
+        function closeChannelSidebar() {
+            if (channelSidebar) {
+                channelSidebar.classList.remove('open');
+            }
+            if (channelSidebarOverlay) {
+                channelSidebarOverlay.classList.remove('active');
+            }
+        }
+
+        if (mobileMenuBtn && channelSidebar) {
+            mobileMenuBtn.addEventListener('click', () => {
+                const isOpen = channelSidebar.classList.toggle('open');
+                if (channelSidebarOverlay) {
+                    if (isOpen) {
+                        channelSidebarOverlay.classList.add('active');
+                    } else {
+                        channelSidebarOverlay.classList.remove('active');
+                    }
+                }
+            });
+        }
+
+        if (channelSidebarClose) {
+            channelSidebarClose.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeChannelSidebar();
+            });
+        }
+
+        if (channelSidebarOverlay) {
+            channelSidebarOverlay.addEventListener('click', () => {
+                closeChannelSidebar();
+            });
+        }
+
+        const channelItems = document.querySelectorAll('.channel-item');
+        channelItems.forEach(item => {
+            item.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    closeChannelSidebar();
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

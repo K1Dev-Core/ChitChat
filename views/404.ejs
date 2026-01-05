@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 - ไม่พบหน้า</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .error-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #1E1F22;
+      padding: 20px;
+    }
+
+    .error-content {
+      text-align: center;
+      max-width: 600px;
+      padding: 40px;
+      background: #2B2D31;
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .error-icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 24px;
+      color: #F23F43;
+    }
+
+    .error-title {
+      font-size: 48px;
+      font-weight: 700;
+      color: #F2F3F5;
+      margin-bottom: 16px;
+    }
+
+    .error-subtitle {
+      font-size: 20px;
+      font-weight: 600;
+      color: #F2F3F5;
+      margin-bottom: 8px;
+    }
+
+    .error-description {
+      font-size: 16px;
+      color: #949BA4;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .error-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .error-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      background: #5865F2;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .error-button:hover {
+      background: #4752C4;
+      transform: translateY(-1px);
+    }
+
+    .error-button.secondary {
+      background: #4E5058;
+    }
+
+    .error-button.secondary:hover {
+      background: #5D5F66;
+    }
+
+    .error-code {
+      font-size: 14px;
+      color: #80848E;
+      margin-top: 24px;
+      font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    @media (max-width: 768px) {
+      .error-content {
+        padding: 24px;
+      }
+
+      .error-title {
+        font-size: 36px;
+      }
+
+      .error-subtitle {
+        font-size: 18px;
+      }
+
+      .error-icon {
+        width: 80px;
+        height: 80px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="error-container">
+    <div class="error-content">
+      <div class="error-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <h1 class="error-title">404</h1>
+      <h2 class="error-subtitle">ไม่พบหน้าที่คุณกำลังมองหา</h2>
+      <p class="error-description">
+        หน้านี้อาจถูกลบ ย้าย หรือไม่มีอยู่จริง<br>
+        กรุณาตรวจสอบ URL หรือกลับไปที่หน้าหลัก
+      </p>
+      <div class="error-actions">
+        <a href="/" class="error-button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          กลับหน้าหลัก
+        </a>
+        <button class="error-button secondary" onclick="window.history.back()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          ย้อนกลับ
+        </button>
+      </div>
+      <div class="error-code">
+        Error Code: 404 | Page Not Found
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+
