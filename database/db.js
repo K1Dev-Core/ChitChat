@@ -86,6 +86,29 @@ class Database {
 
                 this.db.run(`
           CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
+        `);
+
+                this.db.run(`
+          CREATE TABLE IF NOT EXISTS notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT,
+            tags TEXT,
+            file_path TEXT,
+            file_name TEXT,
+            file_type TEXT,
+            image_path TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (channel_id) REFERENCES channels(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+          )
+        `);
+
+                this.db.run(`
+          CREATE INDEX IF NOT EXISTS idx_notes_channel ON notes(channel_id);
         `, (err) => {
                     if (err) {
                         reject(err);
@@ -129,21 +152,49 @@ class Database {
                     migrations.push('ALTER TABLE messages ADD COLUMN expire_at DATETIME');
                 }
 
-                if (migrations.length === 0) {
-                    resolve();
-                    return;
-                }
+                this.db.all("SELECT name FROM sqlite_master WHERE type='table' AND name='notes'", (err, tables) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    if (tables.length === 0) {
+                        migrations.push(`
+                            CREATE TABLE notes (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                channel_id TEXT NOT NULL,
+                                user_id TEXT NOT NULL,
+                                title TEXT NOT NULL,
+                                content TEXT,
+                                tags TEXT,
+                                file_path TEXT,
+                                file_name TEXT,
+                                file_type TEXT,
+                                image_path TEXT,
+                                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                FOREIGN KEY (channel_id) REFERENCES channels(id),
+                                FOREIGN KEY (user_id) REFERENCES users(id)
+                            )
+                        `);
+                        migrations.push('CREATE INDEX IF NOT EXISTS idx_notes_channel ON notes(channel_id)');
+                    }
 
-                let completed = 0;
-                migrations.forEach((migration, index) => {
-                    this.db.run(migration, (err) => {
-                        if (err) {
-                            console.error(`Migration ${index + 1} failed:`, err);
-                        }
-                        completed++;
-                        if (completed === migrations.length) {
-                            resolve();
-                        }
+                    if (migrations.length === 0) {
+                        resolve();
+                        return;
+                    }
+
+                    let completed = 0;
+                    migrations.forEach((migration, index) => {
+                        this.db.run(migration, (err) => {
+                            if (err) {
+                                console.error(`Migration ${index + 1} failed:`, err);
+                            }
+                            completed++;
+                            if (completed === migrations.length) {
+                                resolve();
+                            }
+                        });
                     });
                 });
             });

@@ -84,7 +84,8 @@ class Message {
       fileType: this.fileType,
       fileSize: this.fileSize,
       isLink: this.isLink || (this.text && this.isValidUrl(this.text)),
-      timestamp: this.getFormattedTimestamp()
+      timestamp: this.getFormattedTimestamp(),
+      expireAt: this.expireAt ? this.expireAt.toISOString() : null
     };
   }
 }

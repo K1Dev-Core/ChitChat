@@ -331,6 +331,72 @@ class ChatStore {
     await this.db.run('DELETE FROM messages WHERE id = ?', [messageId]);
     return true;
   }
+
+  async createNote(channelId, userId, title, content, tags, filePath, fileName, fileType, imagePath) {
+    const tagsStr = Array.isArray(tags) ? tags.join(',') : tags || '';
+    const result = await this.db.run(
+      'INSERT INTO notes (channel_id, user_id, title, content, tags, file_path, file_name, file_type, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [channelId, userId, title, content || '', tagsStr, filePath, fileName, fileType, imagePath]
+    );
+    return await this.db.get('SELECT * FROM notes WHERE id = ?', [result.lastID]);
+  }
+
+  async getNotes(channelId) {
+    return await this.db.all(
+      'SELECT n.*, u.name as user_name, u.avatar as user_avatar FROM notes n LEFT JOIN users u ON n.user_id = u.id WHERE n.channel_id = ? ORDER BY n.created_at DESC',
+      [channelId]
+    );
+  }
+
+  async getNote(noteId) {
+    return await this.db.get(
+      'SELECT n.*, u.name as user_name, u.avatar as user_avatar FROM notes n LEFT JOIN users u ON n.user_id = u.id WHERE n.id = ?',
+      [noteId]
+    );
+  }
+
+  async updateNote(noteId, title, content, tags, filePath, fileName, fileType, imagePath) {
+    const tagsStr = Array.isArray(tags) ? tags.join(',') : tags || '';
+    const now = this.formatLocalDateTime(new Date());
+    await this.db.run(
+      'UPDATE notes SET title = ?, content = ?, tags = ?, file_path = ?, file_name = ?, file_type = ?, image_path = ?, updated_at = ? WHERE id = ?',
+      [title, content || '', tagsStr, filePath, fileName, fileType, imagePath, now, noteId]
+    );
+    return await this.getNote(noteId);
+  }
+
+  async deleteNote(noteId) {
+    const note = await this.db.get('SELECT * FROM notes WHERE id = ?', [noteId]);
+    if (!note) return false;
+
+    const fs = require('fs');
+    const path = require('path');
+
+    if (note.file_path) {
+      const filePath = path.join(__dirname, '..', 'public', note.file_path);
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (err) {
+        console.error('Error deleting file:', err);
+      }
+    }
+
+    if (note.image_path) {
+      const imagePath = path.join(__dirname, '..', 'public', note.image_path);
+      try {
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+        }
+      } catch (err) {
+        console.error('Error deleting image:', err);
+      }
+    }
+
+    await this.db.run('DELETE FROM notes WHERE id = ?', [noteId]);
+    return true;
+  }
 }
 
 module.exports = ChatStore;

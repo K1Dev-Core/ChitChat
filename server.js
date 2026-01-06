@@ -164,11 +164,20 @@ async function initializeApp() {
       });
 
       socket.on('joinWhiteboard', (data) => {
+        const userId = socket.userId;
+        if (!userId) {
+          socket.disconnect();
+          return;
+        }
         const { channelId } = data;
         socket.join(`whiteboard-${channelId}`);
       });
 
       socket.on('whiteboardChange', async (data) => {
+        const userId = socket.userId;
+        if (!userId) {
+          return;
+        }
         const { channelId, canvasData, changeType, changeData } = data;
         
         socket.to(`whiteboard-${channelId}`).emit('whiteboardUpdate', {

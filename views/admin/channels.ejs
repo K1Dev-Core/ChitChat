@@ -105,7 +105,15 @@
                                         <%= channel.name %>
                                     </td>
                                     <td>
-                                        <%= channel.type %>
+                                        <% if (channel.type === 'text') { %>
+                                            <span style="padding: 4px 8px; background: #5865F2; color: white; border-radius: 4px; font-size: 12px; font-weight: 500;">Text</span>
+                                        <% } else if (channel.type === 'whiteboard') { %>
+                                            <span style="padding: 4px 8px; background: #23A559; color: white; border-radius: 4px; font-size: 12px; font-weight: 500;">Whiteboard</span>
+                                        <% } else if (channel.type === 'note') { %>
+                                            <span style="padding: 4px 8px; background: #F0B232; color: white; border-radius: 4px; font-size: 12px; font-weight: 500;">Note</span>
+                                        <% } else { %>
+                                            <span style="padding: 4px 8px; background: #949BA4; color: white; border-radius: 4px; font-size: 12px; font-weight: 500;"><%= channel.type %></span>
+                                        <% } %>
                                     </td>
                                     <td>
                                         <%= channel.server_name || 'N/A' %>
@@ -153,6 +161,7 @@
                         <option value="text">Text</option>
                         <option value="voice">Voice</option>
                         <option value="whiteboard">Whiteboard</option>
+                        <option value="note">Note</option>
                     </select>
                 </div>
                 <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">

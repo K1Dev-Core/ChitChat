@@ -223,18 +223,26 @@
                                 <line x1="9" y1="3" x2="9" y2="21"></line>
                                 <line x1="3" y1="9" x2="21" y2="9"></line>
                             </svg>
-                            <% } else { %>
+                            <% } else if (ch.type==='note' ) { %>
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2">
-                                    <line x1="4" y1="9" x2="20" y2="9"></line>
-                                    <line x1="4" y1="15" x2="20" y2="15"></line>
-                                    <line x1="10" y1="3" x2="8" y2="21"></line>
-                                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
                                 </svg>
-                                <% } %>
-                                    <span>
-                                        <%= ch.name %>
-                                    </span>
+                                <% } else { %>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <line x1="4" y1="9" x2="20" y2="9"></line>
+                                        <line x1="4" y1="15" x2="20" y2="15"></line>
+                                        <line x1="10" y1="3" x2="8" y2="21"></line>
+                                        <line x1="16" y1="3" x2="14" y2="21"></line>
+                                    </svg>
+                                    <% } %>
+                                        <span>
+                                            <%= ch.name %>
+                                        </span>
                     </a>
                     <% }); %>
             </div>
@@ -361,16 +369,15 @@
         let remoteCursors = new Map();
         let updateThrottle = null;
         let lastUpdateTime = 0;
-        <% if (currentUser) { %>
+        <% if (!isLoggedIn || !currentUser) { %>
+            window.location.href = '/?server=<%= selectedServerId %>&channel=<%= selectedChannelId %>';
+        <% } %>
             let currentUser = {
                 id: '<%= currentUser.id %>',
                 name: '<%= currentUser.name %>',
                 avatar: '<%= currentUser.avatar %>'
             };
-        <% } else { %>
-            let currentUser = null;
-        <% } %>
-            let userColor = currentUser ? generateColorFromString(currentUser.id) : '#5865F2';
+        let userColor = generateColorFromString(currentUser.id);
 
         function generateColorFromString(str) {
             let hash = 0;
@@ -382,9 +389,20 @@
         }
 
         window.addEventListener('load', () => {
-            socket = io();
+            <% if (!isLoggedIn || !currentUser) { %>
+                window.location.href = '/?server=<%= selectedServerId %>&channel=<%= selectedChannelId %>';
+                return;
+            <% } %>
+
+                socket = io();
 
             socket.on('connect', () => {
+                socket.emit('join', {
+                    userId: currentUser.id,
+                    userName: currentUser.name,
+                    userAvatar: currentUser.avatar,
+                    channelId: currentChannelId
+                });
                 socket.emit('joinWhiteboard', { channelId: currentChannelId });
             });
 
@@ -771,7 +789,7 @@
             if (!canvas) return;
 
             const activeObjects = canvas.getActiveObjects();
-            
+
             if (activeObjects && activeObjects.length > 0) {
                 activeObjects.forEach(obj => {
                     canvas.remove(obj);

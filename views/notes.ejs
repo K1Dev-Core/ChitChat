@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= server.name %> - <%= channel.name %>
+    </title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .notes-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .notes-header {
+            padding: 16px 24px;
+            background: #2B2D31;
+            border-bottom: 1px solid #1E1F22;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .notes-header h2 {
+            color: #F2F3F5;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .notes-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            background: #313338;
+        }
+
+        .notes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .note-card {
+            background: #2B2D31;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #1E1F22;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .note-card:hover {
+            border-color: #5865F2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .note-title {
+            color: #F2F3F5;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            word-break: break-word;
+        }
+
+        .note-content {
+            color: #B5BAC1;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .note-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .note-tag {
+            background: #5865F2;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .note-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #1E1F22;
+        }
+
+        .note-author {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #949BA4;
+            font-size: 12px;
+        }
+
+        .note-author img {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+
+        .note-date {
+            color: #949BA4;
+            font-size: 12px;
+        }
+
+        .note-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .note-action-btn {
+            background: transparent;
+            border: none;
+            color: #949BA4;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .note-action-btn:hover {
+            background: #35373C;
+            color: #F23F43;
+        }
+
+        .note-image-preview {
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 12px;
+        }
+
+        .note-file-attachment {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: #1E1F22;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            color: #B5BAC1;
+            font-size: 12px;
+        }
+
+        .add-note-btn {
+            background: #5865F2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .add-note-btn:hover {
+            background: #4752C4;
+        }
+
+        .empty-notes {
+            text-align: center;
+            padding: 60px 20px;
+            color: #949BA4;
+        }
+
+        .empty-notes svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        #noteModal .modal-container {
+            width: min(720px, 100%);
+            margin: 0 auto;
+            padding: 16px;
+            max-height: 100vh;
+        }
+
+        #noteModal .modal-box {
+            width: 100%;
+            max-width: 720px;
+            max-height: calc(100vh - 32px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #noteModal .modal-title {
+            font-size: clamp(24px, 4.2vw, 40px);
+            line-height: 1.1;
+        }
+
+        .note-modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow: auto;
+            padding-right: 4px;
+        }
+
+        .note-modal-field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-modal-label {
+            display: block;
+            color: #B5BAC1;
+            font-size: 14px;
+        }
+
+        .note-modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        #noteUploads {
+            width: 100%;
+        }
+
+        .note-uploads-preview {
+            background: #1E1F22;
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .note-upload-preview-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #B5BAC1;
+            font-size: 13px;
+        }
+
+        .note-upload-thumb {
+            width: 56px;
+            height: 56px;
+            border-radius: 6px;
+            object-fit: cover;
+            flex: 0 0 auto;
+            cursor: pointer;
+        }
+
+        .note-upload-filepill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #2B2D31;
+            border: 1px solid #35373C;
+            padding: 10px 12px;
+            border-radius: 6px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .note-upload-filepill-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        .note-upload-actions {
+            display: flex;
+            gap: 8px;
+            flex: 0 0 auto;
+        }
+
+        .note-mini-btn {
+            background: transparent;
+            border: 1px solid #35373C;
+            color: #F2F3F5;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .note-mini-btn:hover {
+            background: #35373C;
+        }
+
+        #noteViewModal .note-view-content {
+            color: #B5BAC1;
+            font-size: 14px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow: auto;
+            max-height: min(60vh, 520px);
+        }
+
+        #noteViewModal .note-view-attachments {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        #noteViewModal .note-view-image {
+            width: 100%;
+            max-height: 360px;
+            object-fit: contain;
+            border-radius: 8px;
+            background: #1E1F22;
+            cursor: pointer;
+        }
+
+        #noteViewModal .note-view-file {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #1E1F22;
+            border-radius: 8px;
+            padding: 10px;
+            color: #B5BAC1;
+            overflow: hidden;
+        }
+
+        #noteViewModal .note-view-file a {
+            color: #F2F3F5;
+            text-decoration: none;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 480px) {
+            .notes-header {
+                padding: 12px 12px;
+            }
+
+            .notes-content {
+                padding: 12px;
+            }
+
+            .notes-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .note-card {
+                padding: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-container">
+        <nav class="server-sidebar">
+            <% allServers.forEach(s=> { %>
+                <a href="/?server=<%= s.id %>&channel=<%= serverChannels.length > 0 ? serverChannels[0].id : 'c1' %>"
+                    class="server-item <%= s.id === selectedServerId ? 'active' : '' %>">
+                    <div class="server-icon">
+                        <img src="<%= s.avatar || 'https://placehold.co/100/5865F2/white?text=' + (s.name ? s.name.charAt(0) : '?') %>"
+                            alt="<%= s.name %>" />
+                    </div>
+                    <div class="active-pill"></div>
+                </a>
+                <% }); %>
+                    <div class="divider"></div>
+                    <button class="add-server-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+        </nav>
+
+        <div class="channel-sidebar-overlay" id="channelSidebarOverlay"></div>
+
+        <div class="channel-sidebar">
+            <header class="channel-header">
+                <h1>
+                    <%= server.name %>
+                </h1>
+                <div class="channel-header-actions">
+                    <button class="channel-sidebar-close" id="channelSidebarClose">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="channel-list">
+                <div class="channel-category">
+                    <span>ช่องข้อความ</span>
+                </div>
+                <% serverChannels.forEach(ch=> { %>
+                    <a href="/?server=<%= selectedServerId %>&channel=<%= ch.id %>"
+                        class="channel-item <%= ch.id === selectedChannelId ? 'active' : '' %>">
+                        <% if (ch.type==='whiteboard' ) { %>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="9" y1="3" x2="9" y2="21"></line>
+                                <line x1="3" y1="9" x2="21" y2="9"></line>
+                            </svg>
+                            <% } else if (ch.type==='note' ) { %>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                </svg>
+                                <% } else { %>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <line x1="4" y1="9" x2="20" y2="9"></line>
+                                        <line x1="4" y1="15" x2="20" y2="15"></line>
+                                        <line x1="10" y1="3" x2="8" y2="21"></line>
+                                        <line x1="16" y1="3" x2="14" y2="21"></line>
+                                    </svg>
+                                    <% } %>
+                                        <span>
+                                            <%= ch.name %>
+                                        </span>
+                    </a>
+                    <% }); %>
+            </div>
+        </div>
+
+        <div class="notes-container">
+            <div class="notes-header">
+                <h2>
+                    <%= channel.name %>
+                </h2>
+                <% if (isLoggedIn && currentUser) { %>
+                    <button class="add-note-btn" id="addNoteBtn">+ เพิ่มโน้ต</button>
+                    <% } %>
+            </div>
+
+            <div class="notes-content">
+                <% if (notes && notes.length> 0) { %>
+                    <div class="notes-grid" id="notesGrid">
+                        <% notes.forEach(note=> { %>
+                            <div class="note-card" data-note-id="<%= note.id %>">
+                                <% if (note.image_path) { %>
+                                    <img src="<%= (function(){ try { const a = JSON.parse(note.file_path || '[]'); const img = a.find(x => x && x.type && x.type.startsWith('image/')); return img ? img.path : note.image_path; } catch(e) { return note.image_path; } })() %>"
+                                        alt="Note image" class="note-image-preview" />
+                                    <% } %>
+                                        <div class="note-header">
+                                            <div style="flex: 1;">
+                                                <div class="note-title">
+                                                    <%= note.title %>
+                                                </div>
+                                            </div>
+                                            <% if (isLoggedIn && currentUser && currentUser.id===note.user_id) { %>
+                                                <div class="note-actions">
+                                                    <button class="note-action-btn edit-note-btn"
+                                                        data-note-id="<%= note.id %>" title="แก้ไข">
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                                            stroke="currentColor" stroke-width="2">
+                                                            <path
+                                                                d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7">
+                                                            </path>
+                                                            <path
+                                                                d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z">
+                                                            </path>
+                                                        </svg>
+                                                    </button>
+                                                    <button class="note-action-btn delete-note-btn"
+                                                        data-note-id="<%= note.id %>" title="ลบ">
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                                            stroke="currentColor" stroke-width="2">
+                                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                                            <path
+                                                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                                            </path>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                                <% } %>
+                                        </div>
+                                        <% if (note.content) { %>
+                                            <div class="note-content">
+                                                <%= note.content.replace(/\n/g, '<br>' ) %>
+                                            </div>
+                                            <% } %>
+                                                <% if (note.tags) { %>
+                                                    <div class="note-tags">
+                                                        <% const tags=note.tags.split(',').filter(t=> t.trim()); %>
+                                                            <% tags.forEach(tag=> { %>
+                                                                <span class="note-tag">
+                                                                    <%= tag.trim() %>
+                                                                </span>
+                                                                <% }); %>
+                                                    </div>
+                                                    <% } %>
+                                                        <% if (note.file_path) { %>
+                                                            <% let att=[]; try { const a=JSON.parse(note.file_path
+                                                                || '[]' ); if (Array.isArray(a)) att=a; } catch(e) {
+                                                                att=[]; } %>
+                                                                <% const first=att && att.length ? att[0] : null; %>
+                                                                    <% if (first && !(first.type &&
+                                                                        first.type.startsWith('image/'))) { %>
+                                                                        <div class="note-file-attachment">
+                                                                            <svg width="16" height="16"
+                                                                                viewBox="0 0 24 24" fill="none"
+                                                                                stroke="currentColor" stroke-width="2">
+                                                                                <path
+                                                                                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z">
+                                                                                </path>
+                                                                                <polyline points="14 2 14 8 20 8">
+                                                                                </polyline>
+                                                                            </svg>
+                                                                            <a href="<%= first.path %>"
+                                                                                download="<%= first.name %>">
+                                                                                <%= first.name %>
+                                                                            </a>
+                                                                            <% if (att.length> 1) { %>
+                                                                                <span
+                                                                                    style="margin-left: 8px; color: #949BA4;">+
+                                                                                    <%= att.length - 1 %> อื่นๆ
+                                                                                </span>
+                                                                                <% } %>
+                                                                        </div>
+                                                                        <% } else if (first && att.length> 1) { %>
+                                                                            <div class="note-file-attachment">
+                                                                                <svg width="16" height="16"
+                                                                                    viewBox="0 0 24 24" fill="none"
+                                                                                    stroke="currentColor"
+                                                                                    stroke-width="2">
+                                                                                    <path
+                                                                                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z">
+                                                                                    </path>
+                                                                                    <polyline points="14 2 14 8 20 8">
+                                                                                    </polyline>
+                                                                                </svg>
+                                                                                <span>มีไฟล์แนบ <%= att.length %>
+                                                                                        ไฟล์</span>
+                                                                            </div>
+                                                                            <% } %>
+                                                                                <% } %>
+                                                                                    <div class="note-meta">
+                                                                                        <div class="note-author">
+                                                                                            <img src="<%= note.user_avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + note.user_name %>"
+                                                                                                alt="<%= note.user_name %>" />
+                                                                                            <span>
+                                                                                                <%= note.user_name %>
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        <div class="note-date">
+                                                                                            <%= new
+                                                                                                Date(note.created_at).toLocaleDateString('th-TH')
+                                                                                                %>
+                                                                                        </div>
+                                                                                    </div>
+                            </div>
+                            <% }); %>
+                    </div>
+                    <% } else { %>
+                        <div class="empty-notes">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                            <h3>ยังไม่มีโน้ต</h3>
+                            <p>เริ่มต้นสร้างโน้ตแรกของคุณ</p>
+                        </div>
+                        <% } %>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="noteViewModal" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-box">
+                <h1 class="modal-title" id="noteViewTitle"></h1>
+                <div style="display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 4px;">
+                    <div id="noteViewContent" class="note-view-content"></div>
+                    <div id="noteViewAttachments" class="note-view-attachments"></div>
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+                    <button type="button" class="modal-button" onclick="closeNoteViewModal()">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="noteModal" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-box">
+                <h1 class="modal-title" id="noteModalTitle">เพิ่มโน้ต</h1>
+                <form id="noteForm" enctype="multipart/form-data">
+                    <input type="hidden" id="noteId" name="noteId" />
+                    <input type="hidden" id="channelId" name="channelId" value="<%= selectedChannelId %>" />
+                    <div class="note-modal-form">
+                        <div class="note-modal-field">
+                            <label class="note-modal-label">หัวข้อ *</label>
+                            <input type="text" id="noteTitle" name="title" class="modal-input" required
+                                placeholder="ใส่หัวข้อโน้ต" />
+                        </div>
+                        <div class="note-modal-field">
+                            <label class="note-modal-label">รายละเอียด</label>
+                            <textarea id="noteContent" name="content" class="modal-input" rows="6"
+                                placeholder="ใส่รายละเอียดโน้ต"></textarea>
+                        </div>
+                        <div class="note-modal-field">
+                            <label class="note-modal-label">แท็ก (คั่นด้วยเครื่องหมายจุลภาค)</label>
+                            <input type="text" id="noteTags" name="tags" class="modal-input"
+                                placeholder="ตัวอย่าง: งาน, สำคัญ, โปรเจค" />
+                        </div>
+                        <div class="note-modal-field">
+                            <label class="note-modal-label">อัพโหลด (รูป/ไฟล์)</label>
+                            <input type="file" id="noteUploads" name="uploads" class="modal-input" multiple />
+                            <div id="uploadsPreview" class="note-uploads-preview" style="display: none;"></div>
+                        </div>
+                        <div class="note-modal-actions">
+                            <button type="button" class="modal-button" onclick="closeNoteModal()"
+                                style="background: #35373C;">ยกเลิก</button>
+                            <button type="submit" class="modal-button">บันทึก</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/modal.js"></script>
+    <script>
+        const currentChannelId = '<%= selectedChannelId %>';
+        const currentUser = <% - JSON.stringify(currentUser || null) %>;
+
+        document.getElementById('addNoteBtn')?.addEventListener('click', () => {
+            if (!currentUser) {
+                alert('กรุณาเข้าสู่ระบบก่อน');
+                return;
+            }
+            openNoteModal();
+        });
+
+        function openNoteModal(noteId = null) {
+            const modal = document.getElementById('noteModal');
+            const form = document.getElementById('noteForm');
+            const titleInput = document.getElementById('noteModalTitle');
+            const noteIdInput = document.getElementById('noteId');
+
+            if (noteId) {
+                titleInput.textContent = 'แก้ไขโน้ต';
+                noteIdInput.value = noteId;
+                loadNoteData(noteId);
+            } else {
+                titleInput.textContent = 'เพิ่มโน้ต';
+                noteIdInput.value = '';
+                form.reset();
+                const prev = document.getElementById('uploadsPreview');
+                if (prev) {
+                    prev.style.display = 'none';
+                    prev.innerHTML = '';
+                }
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeNoteModal() {
+            document.getElementById('noteModal').style.display = 'none';
+            document.getElementById('noteForm').reset();
+            const prev = document.getElementById('uploadsPreview');
+            if (prev) {
+                prev.style.display = 'none';
+                prev.innerHTML = '';
+            }
+        }
+
+        async function loadNoteData(noteId) {
+            try {
+                const response = await fetch(`/api/note/${noteId}`);
+                const note = await response.json();
+
+                document.getElementById('noteTitle').value = note.title || '';
+                document.getElementById('noteContent').value = note.content || '';
+                document.getElementById('noteTags').value = note.tags || '';
+
+                const prev = document.getElementById('uploadsPreview');
+                if (prev) {
+                    prev.style.display = 'none';
+                    prev.innerHTML = '';
+                }
+
+                if (uploadsInput) {
+                    uploadsInput.value = '';
+                }
+
+                let files = [];
+                if (note.file_path) {
+                    try {
+                        const parsed = JSON.parse(note.file_path || '[]');
+                        if (Array.isArray(parsed)) files = parsed;
+                    } catch (e) {
+                        files = [];
+                    }
+                }
+
+                if ((!files || !files.length) && note.image_path) {
+                    files = [{ path: note.image_path, name: 'image', type: 'image/*' }];
+                }
+
+                if (prev && files && files.length) {
+                    const imageFiles = files.filter(f => f && f.type && f.type.startsWith('image/'));
+                    const firstImage = imageFiles[0] || null;
+
+                    let html = '';
+                    if (firstImage) {
+                        html += `<div class="note-upload-preview-row">
+                            <img class="note-upload-thumb" src="${firstImage.path}" alt="preview" data-preview-image="1" />
+                            <div style="flex: 1; overflow: hidden;">
+                                <div style="color:#F2F3F5; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeText(firstImage.name)}</div>
+                                <div style="color:#949BA4; font-size:12px;">รูปภาพ</div>
+                            </div>
+                            <div class="note-upload-actions">
+                                ${files.length > 1 ? `<button type="button" class="note-mini-btn" id="openAllUploadsBtn">ดูทั้งหมด (${files.length})</button>` : ''}
+                            </div>
+                        </div>`;
+                    }
+
+                    const nonImages = files.filter(f => !(f && f.type && f.type.startsWith('image/')));
+                    if (!firstImage && nonImages.length) {
+                        const f0 = nonImages[0];
+                        html += `<div class="note-upload-preview-row">
+                            <div class="note-upload-filepill">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:0 0 auto; color:#949BA4;">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                </svg>
+                                <div class="note-upload-filepill-name">${escapeText(f0.name)}</div>
+                                ${nonImages.length > 1 ? `<div style="color:#949BA4; font-size:12px;">+${nonImages.length - 1} อื่นๆ</div>` : ''}
+                            </div>
+                            <div class="note-upload-actions">
+                                ${files.length > 1 ? `<button type="button" class="note-mini-btn" id="openAllUploadsBtn">ดูทั้งหมด (${files.length})</button>` : ''}
+                            </div>
+                        </div>`;
+                    }
+
+                    prev.innerHTML = html;
+                    prev.style.display = 'flex';
+
+                    const openAllBtn = document.getElementById('openAllUploadsBtn');
+                    if (openAllBtn) {
+                        openAllBtn.onclick = () => openNoteViewModal(noteId);
+                    }
+
+                    const thumb = prev.querySelector('[data-preview-image="1"]');
+                    if (thumb && firstImage) {
+                        thumb.addEventListener('click', () => openImageLightbox(firstImage.path));
+                    }
+                }
+            } catch (error) {
+            }
+        }
+
+        const uploadsInput = document.getElementById('noteUploads');
+
+        function escapeText(s) {
+            return String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        }
+
+        function renderUploadsPreview(files) {
+            const wrap = document.getElementById('uploadsPreview');
+            if (!wrap) return;
+
+            if (!files || !files.length) {
+                wrap.style.display = 'none';
+                wrap.innerHTML = '';
+                return;
+            }
+
+            const imageFiles = files.filter(f => f && f.type && f.type.startsWith('image/'));
+            const firstImage = imageFiles[0] || null;
+
+            let html = '';
+
+            if (firstImage) {
+                const url = URL.createObjectURL(firstImage);
+                html += `<div class="note-upload-preview-row">
+                    <img class="note-upload-thumb" src="${url}" alt="preview" data-preview-image="1" />
+                    <div style="flex: 1; overflow: hidden;">
+                        <div style="color:#F2F3F5; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeText(firstImage.name)}</div>
+                        <div style="color:#949BA4; font-size:12px;">รูปภาพ</div>
+                    </div>
+                    <div class="note-upload-actions">
+                        ${imageFiles.length > 1 ? `<button type="button" class="note-mini-btn" id="openAllUploadsBtn">ดูทั้งหมด (${imageFiles.length})</button>` : ''}
+                    </div>
+                </div>`;
+            }
+
+            const nonImages = files.filter(f => !(f && f.type && f.type.startsWith('image/')));
+            if (!firstImage && nonImages.length) {
+                const f0 = nonImages[0];
+                html += `<div class="note-upload-preview-row">
+                    <div class="note-upload-filepill">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:0 0 auto; color:#949BA4;">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                        <div class="note-upload-filepill-name">${escapeText(f0.name)}</div>
+                        ${nonImages.length > 1 ? `<div style="color:#949BA4; font-size:12px;">+${nonImages.length - 1} อื่นๆ</div>` : ''}
+                    </div>
+                    <div class="note-upload-actions">
+                        ${files.length > 1 ? `<button type="button" class="note-mini-btn" id="openAllUploadsBtn">ดูทั้งหมด (${files.length})</button>` : ''}
+                    </div>
+                </div>`;
+            }
+
+            if (firstImage && nonImages.length) {
+                const f0 = nonImages[0];
+                html += `<div class="note-upload-preview-row">
+                    <div class="note-upload-filepill">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:0 0 auto; color:#949BA4;">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                        <div class="note-upload-filepill-name">${escapeText(f0.name)}</div>
+                        ${nonImages.length > 1 ? `<div style="color:#949BA4; font-size:12px;">+${nonImages.length - 1} อื่นๆ</div>` : ''}
+                    </div>
+                </div>`;
+            }
+
+            wrap.innerHTML = html;
+            wrap.style.display = 'flex';
+
+            const openAllBtn = document.getElementById('openAllUploadsBtn');
+            if (openAllBtn) {
+                openAllBtn.onclick = () => openUploadsListModal(files);
+            }
+
+            const thumb = wrap.querySelector('[data-preview-image="1"]');
+            if (thumb && firstImage) {
+                thumb.addEventListener('click', () => openImageLightbox(URL.createObjectURL(firstImage)));
+            }
+        }
+
+        if (uploadsInput) {
+            uploadsInput.addEventListener('change', (e) => {
+                const list = Array.from(e.target.files || []);
+                renderUploadsPreview(list);
+            });
+        }
+
+        document.getElementById('noteForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!currentUser) {
+                alert('กรุณาเข้าสู่ระบบก่อน');
+                return;
+            }
+
+            const formData = new FormData(e.target);
+            if (formData.has('file')) formData.delete('file');
+            if (formData.has('image')) formData.delete('image');
+            const noteId = document.getElementById('noteId').value;
+            const url = noteId ? `/api/notes/${noteId}` : '/api/notes';
+            const method = noteId ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    closeNoteModal();
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'เกิดข้อผิดพลาด');
+                }
+            } catch (error) {
+                console.error('Error saving note:', error);
+                alert('เกิดข้อผิดพลาดในการบันทึกโน้ต');
+            }
+        });
+
+        document.querySelectorAll('.edit-note-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const noteId = btn.dataset.noteId;
+                openNoteModal(noteId);
+            });
+        });
+
+        document.querySelectorAll('.delete-note-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const noteId = btn.dataset.noteId;
+
+                if (!confirm('คุณต้องการลบโน้ตนี้หรือไม่?')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/notes/${noteId}`, {
+                        method: 'DELETE'
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert(data.error || 'เกิดข้อผิดพลาด');
+                    }
+                } catch (error) {
+                    console.error('Error deleting note:', error);
+                    alert('เกิดข้อผิดพลาดในการลบโน้ต');
+                }
+            });
+        });
+
+        function closeNoteViewModal() {
+            const modal = document.getElementById('noteViewModal');
+            if (modal) modal.style.display = 'none';
+            const titleEl = document.getElementById('noteViewTitle');
+            const contentEl = document.getElementById('noteViewContent');
+            const attEl = document.getElementById('noteViewAttachments');
+            if (titleEl) titleEl.textContent = '';
+            if (contentEl) contentEl.textContent = '';
+            if (attEl) attEl.innerHTML = '';
+        }
+
+        async function openNoteViewModal(noteId) {
+            try {
+                const response = await fetch(`/api/note/${noteId}`);
+                const note = await response.json();
+
+                const modal = document.getElementById('noteViewModal');
+                const titleEl = document.getElementById('noteViewTitle');
+                const contentEl = document.getElementById('noteViewContent');
+                const attEl = document.getElementById('noteViewAttachments');
+
+                if (titleEl) titleEl.textContent = note.title || '';
+                if (contentEl) contentEl.textContent = note.content || '';
+                if (attEl) attEl.innerHTML = '';
+
+                let files = [];
+                if (note.file_path) {
+                    try {
+                        const parsed = JSON.parse(note.file_path || '[]');
+                        if (Array.isArray(parsed)) files = parsed;
+                    } catch (e) {
+                        files = [];
+                    }
+                }
+
+                if (!files.length && note.image_path) {
+                    files = [{ path: note.image_path, name: 'image', type: 'image/*' }];
+                }
+
+                if (attEl && files.length) {
+                    files.forEach(f => {
+                        if (!f || !f.path) return;
+                        if (f.type && f.type.startsWith('image/')) {
+                            const img = document.createElement('img');
+                            img.src = f.path;
+                            img.className = 'note-view-image';
+                            img.alt = f.name || 'image';
+                            img.onclick = () => openImageLightbox(f.path);
+                            attEl.appendChild(img);
+                            return;
+                        }
+
+                        const row = document.createElement('div');
+                        row.className = 'note-view-file';
+
+                        const icon = document.createElement('div');
+                        icon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+                        icon.style.color = '#949BA4';
+
+                        const link = document.createElement('a');
+                        link.href = f.path;
+                        link.download = f.name || '';
+                        link.textContent = f.name || 'ไฟล์';
+
+                        row.appendChild(icon);
+                        row.appendChild(link);
+                        attEl.appendChild(row);
+                    });
+                }
+
+                if (modal) modal.style.display = 'flex';
+
+                if (modal) {
+                    modal.onclick = (e) => {
+                        if (e.target === modal) {
+                            closeNoteViewModal();
+                        }
+                    };
+                }
+            } catch (error) {
+            }
+        }
+
+        function openUploadsListModal(files) {
+            const titleEl = document.getElementById('noteViewTitle');
+            const contentEl = document.getElementById('noteViewContent');
+            const attEl = document.getElementById('noteViewAttachments');
+            const modal = document.getElementById('noteViewModal');
+
+            if (titleEl) titleEl.textContent = 'ไฟล์ทั้งหมด';
+            if (contentEl) contentEl.textContent = '';
+            if (attEl) attEl.innerHTML = '';
+
+            if (attEl && files && files.length) {
+                files.forEach(f => {
+                    if (!f) return;
+                    if (f.type && f.type.startsWith('image/')) {
+                        const img = document.createElement('img');
+                        img.src = URL.createObjectURL(f);
+                        img.className = 'note-view-image';
+                        img.alt = f.name || 'image';
+                        img.onclick = () => openImageLightbox(URL.createObjectURL(f));
+                        attEl.appendChild(img);
+                        return;
+                    }
+
+                    const row = document.createElement('div');
+                    row.className = 'note-view-file';
+
+                    const icon = document.createElement('div');
+                    icon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+                    icon.style.color = '#949BA4';
+
+                    const name = document.createElement('div');
+                    name.style.flex = '1';
+                    name.style.overflow = 'hidden';
+                    name.style.textOverflow = 'ellipsis';
+                    name.style.whiteSpace = 'nowrap';
+                    name.textContent = f.name || 'ไฟล์';
+
+                    row.appendChild(icon);
+                    row.appendChild(name);
+                    attEl.appendChild(row);
+                });
+            }
+
+            if (modal) modal.style.display = 'flex';
+            if (modal) {
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        closeNoteViewModal();
+                    }
+                };
+            }
+        }
+
+        document.querySelectorAll('.note-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (!e.target.closest('.note-actions')) {
+                    const noteId = card.dataset.noteId;
+                    openNoteViewModal(noteId);
+                }
+            });
+        });
+
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const channelSidebar = document.querySelector('.channel-sidebar');
+        const channelSidebarOverlay = document.getElementById('channelSidebarOverlay');
+        const channelSidebarClose = document.getElementById('channelSidebarClose');
+
+        function closeChannelSidebar() {
+            if (channelSidebar) {
+                channelSidebar.classList.remove('open');
+            }
+            if (channelSidebarOverlay) {
+                channelSidebarOverlay.classList.remove('active');
+            }
+        }
+
+        if (mobileMenuBtn && channelSidebar) {
+            mobileMenuBtn.addEventListener('click', () => {
+                const isOpen = channelSidebar.classList.toggle('open');
+                if (channelSidebarOverlay) {
+                    if (isOpen) {
+                        channelSidebarOverlay.classList.add('active');
+                    } else {
+                        channelSidebarOverlay.classList.remove('active');
+                    }
+                }
+            });
+        }
+
+        if (channelSidebarClose) {
+            channelSidebarClose.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeChannelSidebar();
+            });
+        }
+
+        if (channelSidebarOverlay) {
+            channelSidebarOverlay.addEventListener('click', () => {
+                closeChannelSidebar();
+            });
+        }
+
+        const channelItems = document.querySelectorAll('.channel-item');
+        channelItems.forEach(item => {
+            item.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    closeChannelSidebar();
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

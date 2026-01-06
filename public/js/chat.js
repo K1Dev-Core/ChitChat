@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.chatInitialized = true;
 
   let socket = null;
+  window.socket = null;
   let isLoggedIn = window.appConfig ? window.appConfig.isLoggedIn : false;
   let currentUser = window.appConfig ? window.appConfig.currentUser : null;
 
@@ -20,7 +21,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   socket = io();
+  window.socket = socket;
   let currentChannelId = window.appConfig?.currentChannelId || 'c1';
+  window.currentChannelId = currentChannelId;
 
   if (isLoggedIn && currentUser) {
     socket.on('connect', () => {
@@ -78,10 +81,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   socket.on('messageHistory', (messages) => {
     const messagesList = document.getElementById('messagesList');
+    const messagesLoading = document.getElementById('messagesLoading');
     if (!messagesList) return;
+
+    if (messagesLoading) {
+      messagesLoading.style.display = 'none';
+    }
 
     allMessages = messages;
     messagesList.innerHTML = '';
+
+    if (messagesLoading) {
+      messagesList.appendChild(messagesLoading);
+    }
 
     const typingIndicator = document.getElementById('typingIndicator');
     if (typingIndicator) {
@@ -89,8 +101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     messages.forEach((msg, index) => {
-      const isSequential = index > 0 && messages[index - 1].userId === msg.userId;
-      const messageDiv = addMessageToDOM(msg, isSequential);
+      const messageDiv = addMessageToDOM(msg, false);
       messagesList.appendChild(messageDiv);
 
       setTimeout(() => {
@@ -119,10 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!messagesList) return;
 
     allMessages.push(message);
-    const lastMessage = messagesList.lastElementChild;
-    const isSequential = lastMessage && lastMessage.dataset.userId === message.userId;
-
-    const messageDiv = addMessageToDOM(message, isSequential);
+    const messageDiv = addMessageToDOM(message, false);
 
     setTimeout(() => {
       if (typeof hljs !== 'undefined') {
@@ -236,8 +244,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           });
           messageInput.value = '';
           messageInput.style.height = 'auto';
-          selectedExpireMinutes = 0;
-          if (expireTimeLabel) expireTimeLabel.textContent = 'ตลอดไป';
+          if (selectedExpireMinutes === undefined || selectedExpireMinutes === null) {
+            selectedExpireMinutes = 0;
+          }
+          if (expireTimeLabel) {
+            const opt = expireTimeMenu ? expireTimeMenu.querySelector(`.expire-time-option[data-minutes="${selectedExpireMinutes}"]`) : null;
+            if (opt) {
+              expireTimeLabel.textContent = opt.textContent;
+            }
+          }
           isTyping = false;
           clearTimeout(typingTimeout);
         } else {
@@ -796,16 +811,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.addEventListener('click', async (e) => {
-    if (e.target.classList.contains('message-delete-btn')) {
+    const btn = e.target.closest('.message-delete-btn');
+    if (btn) {
       e.stopPropagation();
-      const messageId = e.target.dataset.messageId;
+      const messageId = btn.dataset.messageId;
       deleteMessage(messageId);
     }
   });
 
   if (socket) {
     socket.on('messageDeleted', (data) => {
-      const messageElement = document.querySelector(`[data-message-id="${data.messageId}"]`);
+      const messageElement = document.getElementById(`msg-${data.messageId}`) || document.querySelector(`[data-message-id="${data.messageId}"]`);
       if (messageElement) {
         const messageItem = messageElement.closest('.message-item');
         if (messageItem) {
@@ -820,6 +836,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function deleteMessage(messageId) {
+  const socket = window.socket;
+  const currentChannelId = window.currentChannelId || window.appConfig?.currentChannelId || 'c1';
   const confirmed = await showConfirmModal({
     title: 'ยืนยันการลบ',
     message: 'คุณต้องการลบข้อความนี้หรือไม่?',
@@ -842,6 +860,14 @@ async function deleteMessage(messageId) {
     const data = await response.json();
 
     if (data.success) {
+      const msgEl = document.getElementById(`msg-${messageId}`) || document.querySelector(`.message-item[data-message-id="${messageId}"]`);
+      if (msgEl) {
+        msgEl.style.animation = 'fadeOut 0.3s ease-out';
+        setTimeout(() => {
+          msgEl.remove();
+        }, 300);
+      }
+
       if (socket) {
         const channelId = window.appConfig?.currentChannelId || currentChannelId || 'c1';
         socket.emit('deleteMessage', { messageId, channelId });
@@ -1001,6 +1027,7 @@ function addMessageToDOM(message, isSequential) {
   messageDiv.className = `message-item ${isSequential ? 'sequential' : ''}`;
   messageDiv.dataset.userId = message.userId;
   messageDiv.dataset.messageId = message.id;
+  messageDiv.id = `msg-${message.id}`;
 
   const currentUser = window.appConfig?.currentUser || null;
   const isOwner = currentUser && currentUser.id === message.userId;
@@ -1019,23 +1046,15 @@ function addMessageToDOM(message, isSequential) {
     if (timeLeft > 0) {
       const minutesLeft = Math.floor(timeLeft / 60000);
       const secondsLeft = Math.floor((timeLeft % 60000) / 1000);
-      if (minutesLeft < 1) {
-        expireCountdown = `<div class="message-expire-countdown" data-expire-at="${message.expireAt}" data-message-id="${message.id}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-          <span class="countdown-text">${secondsLeft}ว</span>
-        </div>`;
-      } else {
-        expireCountdown = `<div class="message-expire-countdown" data-expire-at="${message.expireAt}" data-message-id="${message.id}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-          <span class="countdown-text">${minutesLeft}น</span>
-        </div>`;
-      }
+      const displayText = minutesLeft < 1 ? `${Math.max(0, secondsLeft)}ว` : `${minutesLeft}น`;
+      const expireAtStr = escapeHtml(message.expireAt);
+      expireCountdown = `<div class="message-expire-countdown" data-expire-at="${expireAtStr}" data-message-id="${message.id}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span class="countdown-text">${displayText}</span>
+      </div>`;
     }
   }
 
@@ -1091,31 +1110,20 @@ function addMessageToDOM(message, isSequential) {
     textContent = parsedContent;
   }
 
-  if (isSequential) {
-    messageDiv.innerHTML = `
-      <div class="message-time-indicator">${message.timestamp.split(' ')[1] || ''}</div>
-      <div class="message-content" data-message-id="${message.id}" data-user-id="${message.userId}">
-        ${fileContent}
-        ${linkContent}
-        ${textContent}
+  messageDiv.innerHTML = `
+    <img src="${escapeHtml(message.userAvatar)}" alt="${escapeHtml(message.userName)}" class="message-avatar" />
+    <div class="message-content" data-message-id="${message.id}" data-user-id="${message.userId}">
+      <div class="message-header">
+        <span class="message-author">${escapeHtml(message.userName)}</span>
+        <span class="message-timestamp">${escapeHtml(message.timestamp)}</span>
+        ${expireCountdown}
+        ${deleteBtn}
       </div>
-    `;
-  } else {
-    messageDiv.innerHTML = `
-      <img src="${escapeHtml(message.userAvatar)}" alt="${escapeHtml(message.userName)}" class="message-avatar" />
-      <div class="message-content" data-message-id="${message.id}" data-user-id="${message.userId}">
-        <div class="message-header">
-          <span class="message-author">${escapeHtml(message.userName)}</span>
-          <span class="message-timestamp">${escapeHtml(message.timestamp)}</span>
-          ${expireCountdown}
-          ${deleteBtn}
-        </div>
-        ${fileContent}
-        ${linkContent}
-        ${textContent}
-      </div>
-    `;
-  }
+      ${fileContent}
+      ${linkContent}
+      ${textContent}
+    </div>
+  `;
 
   messagesList.appendChild(messageDiv);
 
@@ -1168,8 +1176,9 @@ function addMessageToDOM(message, isSequential) {
           const timeLeft = expireDate - now;
 
           if (timeLeft <= 0) {
-            if (socket) {
-              socket.emit('deleteExpiredMessage', { messageId: message.id, channelId: currentChannelId });
+            if (window.socket) {
+              const channelId = window.currentChannelId || window.appConfig?.currentChannelId || 'c1';
+              window.socket.emit('deleteExpiredMessage', { messageId: message.id, channelId: channelId });
             }
             const messageItem = messageDiv.closest('.message-item');
             if (messageItem) {
@@ -1185,14 +1194,14 @@ function addMessageToDOM(message, isSequential) {
 
           if (countdownText) {
             if (minutesLeft < 1) {
-              countdownText.textContent = `${secondsLeft}ว`;
-              if (secondsLeft <= 60) {
-                messageDiv.classList.add('expiring-soon');
-              }
+              countdownText.textContent = `${Math.max(0, secondsLeft)}ว`;
+              messageDiv.classList.add('expiring-soon');
             } else {
               countdownText.textContent = `${minutesLeft}น`;
               if (minutesLeft <= 1) {
                 messageDiv.classList.add('expiring-soon');
+              } else {
+                messageDiv.classList.remove('expiring-soon');
               }
             }
           }
@@ -1200,7 +1209,7 @@ function addMessageToDOM(message, isSequential) {
           setTimeout(updateCountdown, 1000);
         };
 
-        setTimeout(updateCountdown, 1000);
+        updateCountdown();
       }
     } else {
       const messageItem = messageDiv.closest('.message-item');

@@ -89,17 +89,24 @@
                 <line x1="9" y1="3" x2="9" y2="21"></line>
                 <line x1="3" y1="9" x2="21" y2="9"></line>
               </svg>
-              <% } else { %>
+              <% } else if (ch.type==='note' ) { %>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="4" y1="9" x2="20" y2="9"></line>
-                  <line x1="4" y1="15" x2="20" y2="15"></line>
-                  <line x1="10" y1="3" x2="8" y2="21"></line>
-                  <line x1="16" y1="3" x2="14" y2="21"></line>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
                 </svg>
-                <% } %>
-                  <span>
-                    <%= ch.name %>
-                  </span>
+                <% } else { %>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="4" y1="9" x2="20" y2="9"></line>
+                    <line x1="4" y1="15" x2="20" y2="15"></line>
+                    <line x1="10" y1="3" x2="8" y2="21"></line>
+                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                  </svg>
+                  <% } %>
+                    <span>
+                      <%= ch.name %>
+                    </span>
           </a>
           <% }); %>
       </div>
@@ -177,6 +184,13 @@
         </div>
       </header>
 
+      <div class="page-loading" id="pageLoading" style="display: none;">
+        <div class="loading-container">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">กำลังโหลด...</div>
+        </div>
+      </div>
+
       <div class="messages-container" id="messagesContainer">
         <div class="welcome-message">
           <div class="welcome-icon">
@@ -192,6 +206,12 @@
         </div>
 
         <div id="messagesList">
+          <div class="content-loading" id="messagesLoading" style="display: none;">
+            <div class="loading-container">
+              <div class="loading-spinner"></div>
+              <div class="loading-text">กำลังโหลดข้อความ...</div>
+            </div>
+          </div>
           <div id="typingIndicator" class="typing-indicator" style="display: none;">
             <div class="typing-dots">
               <span></span>
@@ -205,258 +225,257 @@
             const user = allUsers.find(u => u.id === msg.userId) || { name: msg.userName, avatar: msg.userAvatar, role:
             'Member' };
             %>
-            <div class="message-item <%= isSequential ? 'sequential' : '' %>" data-user-id="<%= msg.userId %>">
-              <% if (!isSequential) { %>
-                <img src="<%= user.avatar || msg.userAvatar %>" alt="<%= user.name || msg.userName %>"
-                  class="message-avatar" />
-                <% } else { %>
-                  <div class="message-time-indicator">
-                    <%= msg.timestamp.split(' ')[1] || '' %></div>
-              <% } %>
+            <div class="message-item" id="msg-<%= msg.id %>" data-user-id="<%= msg.userId %>"
+              data-message-id="<%= msg.id %>">
+              <img src="<%= user.avatar || msg.userAvatar %>" alt="<%= user.name || msg.userName %>"
+                class="message-avatar" />
               <div class="message-content" data-message-id="<%= msg.id %>" data-user-id="<%= msg.userId %>">
-                <% if (!isSequential) { %>
-                  <div class="message-header">
-                    <span class="message-author"><%= user.name || msg.userName %></span>
-                    <% if (user.role === ' Admin') { %>
-                      <span class="message-badge">BOT</span>
-                      <% } %>
-                        <span class="message-timestamp">
-                          <%= msg.timestamp %>
-                        </span>
-                        <% if (currentUser && currentUser.id===msg.userId) { %>
-                          <button class="message-delete-btn" data-message-id="<%= msg.id %>" title="ลบข้อความ">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                              stroke-width="2">
-                              <polyline points="3 6 5 6 21 6"></polyline>
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                              </path>
-                            </svg>
-                          </button>
-                          <% } %>
-                  </div>
-                  <% } %>
-                    <% if (msg.filePath) { %>
-                      <% if (msg.fileType && msg.fileType.startsWith('image/')) { %>
-                        <div class="message-image-container">
-                          <img src="<%= msg.filePath %>" alt="<%= msg.fileName %>" class="message-image"
-                            onclick="openImageLightbox('<%= msg.filePath %>')" />
-                          <a href="<%= msg.filePath %>" download="<%= msg.fileName %>"
-                            class="message-image-download-btn" title="ดาวน์โหลดภาพ" onclick="event.stopPropagation();">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                              stroke-width="2">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                              <polyline points="7 10 12 15 17 10"></polyline>
-                              <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                          </a>
+                <div class="message-header">
+                  <span class="message-author">
+                    <%= user.name || msg.userName %>
+                  </span>
+                  <% if (user.role===' Admin' ) { %>
+                    <span class="message-badge">BOT</span>
+                    <% } %>
+                      <span class="message-timestamp">
+                        <%= msg.timestamp %>
+                      </span>
+                      <% if (currentUser && currentUser.id===msg.userId) { %>
+                        <button class="message-delete-btn" data-message-id="<%= msg.id %>" title="ลบข้อความ">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                          </svg>
+                        </button>
+                        <% } %>
+                </div>
+                <% if (msg.filePath) { %>
+                  <% if (msg.fileType && msg.fileType.startsWith('image/')) { %>
+                    <div class="message-image-container">
+                      <img src="<%= msg.filePath %>" alt="<%= msg.fileName %>" class="message-image"
+                        onclick="openImageLightbox('<%= msg.filePath %>')" />
+                      <a href="<%= msg.filePath %>" download="<%= msg.fileName %>" class="message-image-download-btn"
+                        title="ดาวน์โหลดภาพ" onclick="event.stopPropagation();">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="7 10 12 15 17 10"></polyline>
+                          <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                      </a>
+                    </div>
+                    <% } else { %>
+                      <div class="message-file-container">
+                        <div class="message-file-icon">
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                          </svg>
                         </div>
-                        <% } else { %>
-                          <div class="message-file-container">
-                            <div class="message-file-icon">
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                <polyline points="14 2 14 8 20 8"></polyline>
-                                <line x1="16" y1="13" x2="8" y2="13"></line>
-                                <line x1="16" y1="17" x2="8" y2="17"></line>
-                              </svg>
-                            </div>
-                            <div class="message-file-info">
-                              <a href="<%= msg.filePath %>" download="<%= msg.fileName %>" class="message-file-name">
-                                <%= msg.fileName %>
+                        <div class="message-file-info">
+                          <a href="<%= msg.filePath %>" download="<%= msg.fileName %>" class="message-file-name">
+                            <%= msg.fileName %>
+                          </a>
+                          <span class="message-file-size">
+                            <%= msg.fileSize ? (msg.fileSize / 1024).toFixed(1) + ' KB' : '' %>
+                          </span>
+                        </div>
+                      </div>
+                      <% } %>
+                        <% } %>
+                          <% if (msg.isLink || (msg.text && (msg.text.startsWith('http://') ||
+                            msg.text.startsWith('https://')))) { %>
+                            <div class="message-link">
+                              <a href="<%= msg.text %>" target="_blank" rel="noopener noreferrer"
+                                class="message-link-url">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                  stroke-width="2">
+                                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71">
+                                  </path>
+                                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71">
+                                  </path>
+                                </svg>
+                                <%= msg.text %>
                               </a>
-                              <span class="message-file-size">
-                                <%= msg.fileSize ? (msg.fileSize / 1024).toFixed(1) + ' KB' : '' %>
-                              </span>
                             </div>
-                          </div>
-                          <% } %>
-                            <% } %>
-                              <% if (msg.isLink || (msg.text && (msg.text.startsWith('http://') ||
-                                msg.text.startsWith('https://')))) { %>
-                                <div class="message-link">
-                                  <a href="<%= msg.text %>" target="_blank" rel="noopener noreferrer"
-                                    class="message-link-url">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                      stroke-width="2">
-                                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                                    </svg>
-                                    <%= msg.text %>
-                                  </a>
-                                </div>
-                                <% } else if (msg.text) { %>
-                                  <p class="message-text">
-                                    <%= msg.text %>
-                                  </p>
-                                  <% } %>
+                            <% } else if (msg.text) { %>
+                              <p class="message-text">
+                                <%= msg.text %>
+                              </p>
+                              <% } %>
+              </div>
             </div>
+            <% }); %>
         </div>
-        <% }); %>
+        <div id="chatEnd"></div>
       </div>
-      <div id="chatEnd"></div>
-    </div>
 
-    <div class="input-area">
-      <% if (!isLoggedIn || !currentUser) { %>
-        <div class="login-prompt" onclick="document.getElementById('loginModal').style.display='flex'">
-          <div class="login-prompt-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-          </div>
-          <div class="login-prompt-text">
-            <span class="login-prompt-title">กรุณาเข้าสู่ระบบเพื่อส่งข้อความ</span>
-            <span class="login-prompt-hint">คลิกเพื่อเข้าสู่ระบบ</span>
-          </div>
-        </div>
-        <% } %>
-          <div class="upload-progress" id="uploadProgress" style="display: none;">
-            <div class="upload-progress-bar">
-              <div class="upload-progress-fill" id="uploadProgressFill"></div>
-            </div>
-            <div class="upload-progress-text" id="uploadProgressText">กำลังอัพโหลด...</div>
-          </div>
-          <div class="code-language-selector" id="codeLanguageSelector" style="display: none;">
-            <div class="code-language-label">เลือกภาษา:</div>
-            <div class="code-language-buttons">
-              <button class="code-lang-btn" data-lang="python">Python</button>
-              <button class="code-lang-btn" data-lang="javascript">JavaScript</button>
-              <button class="code-lang-btn" data-lang="java">Java</button>
-              <button class="code-lang-btn" data-lang="other">อื่นๆ</button>
-              <button class="code-lang-btn code-lang-cancel" data-lang="cancel">ยกเลิก</button>
-            </div>
-          </div>
-          <div class="input-container">
-            <input type="file" id="fileInput" style="display: none;" <%=!isLoggedIn || !currentUser ? 'disabled' : '' %>
-            />
-            <button class="input-button" id="fileUploadBtn" type="button" <%=!isLoggedIn || !currentUser ? 'disabled'
-              : '' %>>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
+      <div class="input-area">
+        <% if (!isLoggedIn || !currentUser) { %>
+          <div class="login-prompt" onclick="document.getElementById('loginModal').style.display='flex'">
+            <div class="login-prompt-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
               </svg>
-            </button>
-            <textarea id="messageInput" rows="1"
-              placeholder="<%= !isLoggedIn || !currentUser ? 'กรุณาเข้าสู่ระบบเพื่อส่งข้อความ' : 'ส่งข้อความถึง #' + channel.name %>"
-              <%=!isLoggedIn || !currentUser ? 'disabled' : '' %>></textarea>
-            <div class="input-actions">
-              <div class="expire-time-selector" id="expireTimeSelector">
-                <button class="expire-time-btn" id="expireTimeBtn" type="button" title="ตั้งเวลาลบข้อความ">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
-                  <span id="expireTimeLabel">ตลอดไป</span>
-                </button>
-                <div class="expire-time-menu" id="expireTimeMenu">
-                  <div class="expire-time-option" data-minutes="0">ตลอดไป</div>
-                  <div class="expire-time-option" data-minutes="1">1 นาที</div>
-                  <div class="expire-time-option" data-minutes="5">5 นาที</div>
-                  <div class="expire-time-option" data-minutes="10">10 นาที</div>
-                  <div class="expire-time-option" data-minutes="30">30 นาที</div>
+            </div>
+            <div class="login-prompt-text">
+              <span class="login-prompt-title">กรุณาเข้าสู่ระบบเพื่อส่งข้อความ</span>
+              <span class="login-prompt-hint">คลิกเพื่อเข้าสู่ระบบ</span>
+            </div>
+          </div>
+          <% } %>
+            <div class="upload-progress" id="uploadProgress" style="display: none;">
+              <div class="upload-progress-bar">
+                <div class="upload-progress-fill" id="uploadProgressFill"></div>
+              </div>
+              <div class="upload-progress-text" id="uploadProgressText">กำลังอัพโหลด...</div>
+            </div>
+            <div class="code-language-selector" id="codeLanguageSelector" style="display: none;">
+              <div class="code-language-label">เลือกภาษา:</div>
+              <div class="code-language-buttons">
+                <button class="code-lang-btn" data-lang="python">Python</button>
+                <button class="code-lang-btn" data-lang="javascript">JavaScript</button>
+                <button class="code-lang-btn" data-lang="java">Java</button>
+                <button class="code-lang-btn" data-lang="other">อื่นๆ</button>
+                <button class="code-lang-btn code-lang-cancel" data-lang="cancel">ยกเลิก</button>
+              </div>
+            </div>
+            <div class="input-container">
+              <input type="file" id="fileInput" style="display: none;" <%=!isLoggedIn || !currentUser ? 'disabled' : ''
+                %>
+              />
+              <button class="input-button" id="fileUploadBtn" type="button" <%=!isLoggedIn || !currentUser ? 'disabled'
+                : '' %>>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+              </button>
+              <textarea id="messageInput" rows="1"
+                placeholder="<%= !isLoggedIn || !currentUser ? 'กรุณาเข้าสู่ระบบเพื่อส่งข้อความ' : 'ส่งข้อความถึง #' + channel.name %>"
+                <%=!isLoggedIn || !currentUser ? 'disabled' : '' %>></textarea>
+              <div class="input-actions">
+                <div class="expire-time-selector" id="expireTimeSelector">
+                  <button class="expire-time-btn" id="expireTimeBtn" type="button" title="ตั้งเวลาลบข้อความ">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span id="expireTimeLabel">ตลอดไป</span>
+                  </button>
+                  <div class="expire-time-menu" id="expireTimeMenu">
+                    <div class="expire-time-option" data-minutes="0">ตลอดไป</div>
+                    <div class="expire-time-option" data-minutes="1">1 นาที</div>
+                    <div class="expire-time-option" data-minutes="5">5 นาที</div>
+                    <div class="expire-time-option" data-minutes="10">10 นาที</div>
+                    <div class="expire-time-option" data-minutes="30">30 นาที</div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-    </div>
-  </div>
-
-  <div class="member-sidebar" id="memberSidebar">
-    <div class="member-sidebar-header">
-      <h2 class="member-section-title">ออนไลน์ — <span id="onlineCount">
-          <%= onlineUsers.length %>
-        </span></h2>
-      <button class="member-sidebar-close" id="memberSidebarClose">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-    <div class="member-list">
-      <% onlineUsers.forEach(user=> { %>
-        <div class="member-item">
-          <div class="member-avatar">
-            <img src="<%= user.avatar %>" alt="<%= user.name %>" />
-            <div
-              class="status-indicator <%= user.status === 'online' ? 'online' : user.status === 'idle' ? 'idle' : 'dnd' %>">
-            </div>
-          </div>
-          <div class="member-info">
-            <div class="member-name">
-              <%= user.name %>
-            </div>
-            <div class="member-role">
-              <%= user.role %>
-            </div>
-          </div>
-        </div>
-        <% }); %>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="loginModal" style="display: none;">
-    <div class="modal-container">
-      <div class="modal-box">
-        <h1 class="modal-title">ยินดีต้อนรับ</h1>
-        <p class="modal-subtitle">กรุณาใส่ชื่อของคุณเพื่อเริ่มแชท</p>
-        <form id="loginForm" class="modal-form">
-          <input type="text" id="userNameInput" class="modal-input" placeholder="ใส่ชื่อของคุณ" required autofocus />
-          <button type="submit" class="modal-button">เริ่มแชท</button>
-        </form>
       </div>
     </div>
-  </div>
 
-  <div class="image-lightbox" id="imageLightbox" onclick="closeImageLightbox()">
-    <div class="image-lightbox-content">
-      <button class="image-lightbox-close" onclick="closeImageLightbox()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-      <img id="lightboxImage" src="" alt="" />
+    <div class="member-sidebar" id="memberSidebar">
+      <div class="member-sidebar-header">
+        <h2 class="member-section-title">ออนไลน์ — <span id="onlineCount">
+            <%= onlineUsers.length %>
+          </span></h2>
+        <button class="member-sidebar-close" id="memberSidebarClose">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="member-list">
+        <% onlineUsers.forEach(user=> { %>
+          <div class="member-item">
+            <div class="member-avatar">
+              <img src="<%= user.avatar %>" alt="<%= user.name %>" />
+              <div
+                class="status-indicator <%= user.status === 'online' ? 'online' : user.status === 'idle' ? 'idle' : 'dnd' %>">
+              </div>
+            </div>
+            <div class="member-info">
+              <div class="member-name">
+                <%= user.name %>
+              </div>
+              <div class="member-role">
+                <%= user.role %>
+              </div>
+            </div>
+          </div>
+          <% }); %>
+      </div>
     </div>
-  </div>
 
-  <div class="modal-overlay" id="languageModal" style="display: none;">
-    <div class="modal-container">
-      <div class="modal-box" style="max-width: 600px;">
-        <h1 class="modal-title">เลือกภาษาโปรแกรมมิ่ง</h1>
-        <div class="language-grid" id="languageGrid"></div>
-        <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
-          <button class="modal-button" onclick="closeLanguageModal()"
-            style="background: #35373C; margin-right: 8px;">ยกเลิก</button>
+    <div class="modal-overlay" id="loginModal" style="display: none;">
+      <div class="modal-container">
+        <div class="modal-box">
+          <h1 class="modal-title">ยินดีต้อนรับ</h1>
+          <p class="modal-subtitle">กรุณาใส่ชื่อของคุณเพื่อเริ่มแชท</p>
+          <form id="loginForm" class="modal-form">
+            <input type="text" id="userNameInput" class="modal-input" placeholder="ใส่ชื่อของคุณ" required autofocus />
+            <button type="submit" class="modal-button">เริ่มแชท</button>
+          </form>
         </div>
       </div>
     </div>
-  </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/modal.js"></script>
-  <script>
-    window.appConfig = {
-      isLoggedIn: <%= isLoggedIn %>,
-      currentChannelId: '<%= selectedChannelId || 'c1' %>',
+    <div class="image-lightbox" id="imageLightbox" onclick="closeImageLightbox()">
+      <div class="image-lightbox-content">
+        <button class="image-lightbox-close" onclick="closeImageLightbox()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <img id="lightboxImage" src="" alt="" />
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="languageModal" style="display: none;">
+      <div class="modal-container">
+        <div class="modal-box" style="max-width: 600px;">
+          <h1 class="modal-title">เลือกภาษาโปรแกรมมิ่ง</h1>
+          <div class="language-grid" id="languageGrid"></div>
+          <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+            <button class="modal-button" onclick="closeLanguageModal()"
+              style="background: #35373C; margin-right: 8px;">ยกเลิก</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/modal.js"></script>
+    <script>
+      window.appConfig = {
+        isLoggedIn: <%= isLoggedIn %>,
+        currentChannelId: '<%= selectedChannelId || 'c1' %>',
       <% if (isLoggedIn && currentUser) { %>
-      currentUser: {
-        id: '<%= currentUser.id %>',
-          name: '<%= currentUser.name %>',
-            avatar: '<%= currentUser.avatar %>'
-      }
+        currentUser: {
+          id: '<%= currentUser.id %>',
+            name: '<%= currentUser.name %>',
+              avatar: '<%= currentUser.avatar %>'
+        }
       <% } else { %>
-      currentUser: null
-        <% } %>
+        currentUser: null
+          <% } %>
         };
-  </script>
-  <script src="/js/chat.js"></script>
+    </script>
+    <script src="/js/chat.js"></script>
 </body>
 
 </html>

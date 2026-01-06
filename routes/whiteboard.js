@@ -4,6 +4,10 @@ const router = express.Router();
 module.exports = (chatStore) => {
   router.get('/api/whiteboard/:channelId', async (req, res) => {
     try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ error: 'กรุณาเข้าสู่ระบบก่อน' });
+      }
       const { channelId } = req.params;
       const data = await chatStore.getWhiteboardData(channelId);
       res.json(data || null);
@@ -15,6 +19,10 @@ module.exports = (chatStore) => {
 
   router.post('/api/whiteboard/:channelId', async (req, res) => {
     try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ error: 'กรุณาเข้าสู่ระบบก่อน' });
+      }
       const { channelId } = req.params;
       const canvasData = req.body;
       await chatStore.saveWhiteboardData(channelId, canvasData);
