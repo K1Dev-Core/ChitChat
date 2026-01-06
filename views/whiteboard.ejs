@@ -407,23 +407,24 @@
             });
 
             socket.on('whiteboardUpdate', (data) => {
-                if (data.channelId === currentChannelId && canvas) {
+                if (data.channelId === currentChannelId && canvas && !isUpdatingFromRemote) {
                     isUpdatingFromRemote = true;
 
                     if (data.changeType === 'object:added' && data.changeData) {
-                        fabric.util.enlivenObjects([data.changeData], (objects) => {
-                            objects.forEach(obj => {
-                                const existingObj = canvas.getObjects().find(o => o.id === obj.id);
-                                if (!existingObj) {
+                        const existingObj = canvas.getObjects().find(o => o.id === data.changeData.id);
+                        if (!existingObj) {
+                            fabric.util.enlivenObjects([data.changeData], (objects) => {
+                                objects.forEach(obj => {
                                     canvas.add(obj);
-                                }
+                                });
+                                canvas.renderAll();
                             });
-                            canvas.renderAll();
-                        });
+                        }
                     } else if (data.changeType === 'object:modified' && data.changeData) {
                         const existingObj = canvas.getObjects().find(o => o.id === data.changeData.id);
                         if (existingObj) {
                             existingObj.set(data.changeData);
+                            existingObj.setCoords();
                             canvas.renderAll();
                         }
                     } else if (data.changeType === 'object:moving' && data.changeData) {
@@ -433,7 +434,15 @@
                                 left: data.changeData.left,
                                 top: data.changeData.top
                             });
+                            existingObj.setCoords();
                             canvas.renderAll();
+                        } else if (data.changeData.id) {
+                            fabric.util.enlivenObjects([data.changeData], (objects) => {
+                                objects.forEach(obj => {
+                                    canvas.add(obj);
+                                });
+                                canvas.renderAll();
+                            });
                         }
                     } else if (data.changeType === 'object:scaling' && data.changeData) {
                         const existingObj = canvas.getObjects().find(o => o.id === data.changeData.id);
@@ -442,8 +451,11 @@
                                 scaleX: data.changeData.scaleX,
                                 scaleY: data.changeData.scaleY,
                                 left: data.changeData.left,
-                                top: data.changeData.top
+                                top: data.changeData.top,
+                                width: data.changeData.width,
+                                height: data.changeData.height
                             });
+                            existingObj.setCoords();
                             canvas.renderAll();
                         }
                     } else if (data.changeType === 'object:rotating' && data.changeData) {
@@ -452,6 +464,7 @@
                             existingObj.set({
                                 angle: data.changeData.angle
                             });
+                            existingObj.setCoords();
                             canvas.renderAll();
                         }
                     } else if (data.changeType === 'object:removed' && data.changeData) {
@@ -461,16 +474,16 @@
                             canvas.renderAll();
                         }
                     } else if (data.changeType === 'path:created' && data.changeData) {
-                        fabric.util.enlivenObjects([data.changeData], (objects) => {
-                            objects.forEach(obj => {
-                                const existingObj = canvas.getObjects().find(o => o.id === obj.id);
-                                if (!existingObj) {
+                        const existingObj = canvas.getObjects().find(o => o.id === data.changeData.id);
+                        if (!existingObj) {
+                            fabric.util.enlivenObjects([data.changeData], (objects) => {
+                                objects.forEach(obj => {
                                     canvas.add(obj);
-                                }
+                                });
+                                canvas.renderAll();
                             });
-                            canvas.renderAll();
-                        });
-                    } else if (!data.changeType) {
+                        }
+                    } else if (!data.changeType && data.canvasData) {
                         canvas.loadFromJSON(data.canvasData, () => {
                             canvas.renderAll();
                         });
@@ -478,7 +491,7 @@
 
                     setTimeout(() => {
                         isUpdatingFromRemote = false;
-                    }, 50);
+                    }, 100);
                 }
             });
 
@@ -507,34 +520,55 @@
                     if (!e.target.id) {
                         e.target.id = `obj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                     }
-                    sendWhiteboardUpdate('object:added', e.target.toObject());
+                    const objData = e.target.toObject();
+                    objData.id = e.target.id;
+                    sendWhiteboardUpdate('object:added', objData);
                 }
             });
 
             function sendWhiteboardUpdate(changeType, changeData) {
                 if (isUpdatingFromRemote) return;
 
+                if (!changeData || !changeData.id) {
+                    if (changeData && changeType !== 'object:removed') {
+                        return;
+                    }
+                }
+
                 const now = Date.now();
                 const timeSinceLastUpdate = now - lastUpdateTime;
 
-                if (timeSinceLastUpdate < 50) {
+                const isMoving = changeType === 'object:moving';
+                const throttleDelay = isMoving ? 16 : 50;
+
+                if (timeSinceLastUpdate < throttleDelay) {
                     if (updateThrottle) {
                         clearTimeout(updateThrottle);
                     }
                     updateThrottle = setTimeout(() => {
                         sendWhiteboardUpdate(changeType, changeData);
-                    }, 50 - timeSinceLastUpdate);
+                    }, throttleDelay - timeSinceLastUpdate);
                     return;
                 }
 
                 lastUpdateTime = now;
-                const json = canvas.toJSON();
-                socket.emit('whiteboardChange', {
-                    channelId: currentChannelId,
-                    canvasData: json,
-                    changeType: changeType,
-                    changeData: changeData
-                });
+                
+                if (changeData && changeData.id) {
+                    socket.emit('whiteboardChange', {
+                        channelId: currentChannelId,
+                        canvasData: null,
+                        changeType: changeType,
+                        changeData: changeData
+                    });
+                } else {
+                    const json = canvas.toJSON();
+                    socket.emit('whiteboardChange', {
+                        channelId: currentChannelId,
+                        canvasData: json,
+                        changeType: changeType,
+                        changeData: changeData
+                    });
+                }
             }
 
             canvas.on('object:modified', (e) => {
@@ -544,14 +578,28 @@
             });
 
             canvas.on('object:moving', (e) => {
-                if (!isUpdatingFromRemote && e.target) {
-                    sendWhiteboardUpdate('object:moving', e.target.toObject());
+                if (!isUpdatingFromRemote && e.target && e.target.id) {
+                    const objData = {
+                        id: e.target.id,
+                        left: e.target.left,
+                        top: e.target.top
+                    };
+                    sendWhiteboardUpdate('object:moving', objData);
                 }
             });
 
             canvas.on('object:scaling', (e) => {
-                if (!isUpdatingFromRemote && e.target) {
-                    sendWhiteboardUpdate('object:scaling', e.target.toObject());
+                if (!isUpdatingFromRemote && e.target && e.target.id) {
+                    const objData = {
+                        id: e.target.id,
+                        scaleX: e.target.scaleX,
+                        scaleY: e.target.scaleY,
+                        left: e.target.left,
+                        top: e.target.top,
+                        width: e.target.width,
+                        height: e.target.height
+                    };
+                    sendWhiteboardUpdate('object:scaling', objData);
                 }
             });
 
@@ -760,7 +808,9 @@
                             canvas.setActiveObject(img);
                             canvas.renderAll();
                             if (!isUpdatingFromRemote) {
-                                sendWhiteboardUpdate('object:added', img.toObject());
+                                const objData = img.toObject();
+                                objData.id = img.id;
+                                sendWhiteboardUpdate('object:added', objData);
                             }
                         });
                     };
