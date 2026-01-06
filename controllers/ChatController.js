@@ -41,10 +41,6 @@ class ChatController {
       }
 
       if (channel && channel.type === 'whiteboard') {
-        if (!userName || !userId) {
-          const loginUrl = `/?server=${selectedServerId}&channel=${selectedChannelId}`;
-          return res.redirect(loginUrl);
-        }
         const allServers = await this.chatStore.getAllServers();
         const serverChannels = await this.chatStore.db.all('SELECT * FROM channels WHERE server_id = ? ORDER BY id', [selectedServerId]);
         return res.render('whiteboard', {
@@ -54,12 +50,12 @@ class ChatController {
           serverChannels: serverChannels,
           selectedServerId: selectedServerId,
           selectedChannelId: selectedChannelId,
-          currentUser: {
+          currentUser: userName ? {
             id: userId,
             name: userName,
             avatar: userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`
-          },
-          isLoggedIn: true
+          } : null,
+          isLoggedIn: !!userName
         });
       }
 

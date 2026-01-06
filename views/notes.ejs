@@ -662,15 +662,23 @@
     <script src="/js/modal.js"></script>
     <script>
         const currentChannelId = '<%= selectedChannelId %>';
-        const currentUser = <% - JSON.stringify(currentUser || null) %>;
+        <% if (currentUser) { %>
+        const currentUser = {
+                id: '<%= currentUser.id %>',
+                name: '<%= currentUser.name %>',
+                avatar: '<%= currentUser.avatar %>'
+            };
+        <% } else { %>
+        const currentUser = null;
+        <% } %>
 
-        document.getElementById('addNoteBtn')?.addEventListener('click', () => {
-            if (!currentUser) {
-                alert('กรุณาเข้าสู่ระบบก่อน');
-                return;
-            }
-            openNoteModal();
-        });
+            document.getElementById('addNoteBtn')?.addEventListener('click', () => {
+                if (!currentUser) {
+                    alert('กรุณาเข้าสู่ระบบก่อน');
+                    return;
+                }
+                openNoteModal();
+            });
 
         function openNoteModal(noteId = null) {
             const modal = document.getElementById('noteModal');
@@ -784,7 +792,9 @@
 
                     const thumb = prev.querySelector('[data-preview-image="1"]');
                     if (thumb && firstImage) {
-                        thumb.addEventListener('click', () => openImageLightbox(firstImage.path));
+                        if (typeof openImageLightbox === 'function') {
+                            thumb.addEventListener('click', () => openImageLightbox(firstImage.path));
+                        }
                     }
                 }
             } catch (error) {
@@ -867,7 +877,7 @@
             }
 
             const thumb = wrap.querySelector('[data-preview-image="1"]');
-            if (thumb && firstImage) {
+            if (thumb && firstImage && typeof openImageLightbox === 'function') {
                 thumb.addEventListener('click', () => openImageLightbox(URL.createObjectURL(firstImage)));
             }
         }
@@ -997,7 +1007,9 @@
                             img.src = f.path;
                             img.className = 'note-view-image';
                             img.alt = f.name || 'image';
-                            img.onclick = () => openImageLightbox(f.path);
+                            if (typeof openImageLightbox === 'function') {
+                                img.onclick = () => openImageLightbox(f.path);
+                            }
                             attEl.appendChild(img);
                             return;
                         }
@@ -1051,7 +1063,11 @@
                         img.src = URL.createObjectURL(f);
                         img.className = 'note-view-image';
                         img.alt = f.name || 'image';
-                        img.onclick = () => openImageLightbox(URL.createObjectURL(f));
+                        if (typeof openImageLightbox === 'function') {
+                            if (typeof openImageLightbox === 'function') {
+                                img.onclick = () => openImageLightbox(URL.createObjectURL(f));
+                            }
+                        }
                         attEl.appendChild(img);
                         return;
                     }
@@ -1143,6 +1159,26 @@
                 }
             });
         });
+
+        function openImageLightbox(imageSrc) {
+            const lightbox = document.createElement('div');
+            lightbox.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.95); z-index: 10000; display: flex; align-items: center; justify-content: center; cursor: pointer;';
+            lightbox.onclick = () => document.body.removeChild(lightbox);
+
+            const img = document.createElement('img');
+            img.src = imageSrc;
+            img.style.cssText = 'max-width: 90%; max-height: 90%; object-fit: contain;';
+            img.onclick = (e) => e.stopPropagation();
+
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '✕';
+            closeBtn.style.cssText = 'position: absolute; top: 20px; right: 20px; background: rgba(0, 0, 0, 0.7); color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 20px; z-index: 10001;';
+            closeBtn.onclick = () => document.body.removeChild(lightbox);
+
+            lightbox.appendChild(img);
+            lightbox.appendChild(closeBtn);
+            document.body.appendChild(lightbox);
+        }
     </script>
 </body>
 

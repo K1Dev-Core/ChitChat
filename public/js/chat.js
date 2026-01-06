@@ -20,7 +20,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  socket = io();
+  socket = io({
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionAttempts: 5,
+    timeout: 20000,
+    transports: ['websocket', 'polling']
+  });
+
+  socket.on('connect_error', (error) => {
+    console.clear();
+  });
+
+  socket.on('disconnect', () => {
+    console.clear();
+  });
+
   window.socket = socket;
   let currentChannelId = window.appConfig?.currentChannelId || 'c1';
   window.currentChannelId = currentChannelId;

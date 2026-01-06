@@ -369,14 +369,20 @@
         let remoteCursors = new Map();
         let updateThrottle = null;
         let lastUpdateTime = 0;
-        <% if (!isLoggedIn || !currentUser) { %>
-            window.location.href = '/?server=<%= selectedServerId %>&channel=<%= selectedChannelId %>';
-        <% } %>
-            let currentUser = {
+        let currentUser = null;
+        <% if (isLoggedIn && currentUser) { %>
+            currentUser = {
                 id: '<%= currentUser.id %>',
                 name: '<%= currentUser.name %>',
                 avatar: '<%= currentUser.avatar %>'
             };
+        <% } else { %>
+            currentUser = {
+                id: 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                name: 'Guest',
+                avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest'
+            };
+        <% } %>
         let userColor = generateColorFromString(currentUser.id);
 
         function generateColorFromString(str) {
@@ -389,21 +395,35 @@
         }
 
         window.addEventListener('load', () => {
-            <% if (!isLoggedIn || !currentUser) { %>
-                window.location.href = '/?server=<%= selectedServerId %>&channel=<%= selectedChannelId %>';
-                return;
-            <% } %>
+            socket = io({
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 5,
+                timeout: 20000,
+                transports: ['websocket', 'polling']
+            });
 
-                socket = io();
+            socket.on('connect_error', (error) => {
+                console.clear();
+            });
+
+            socket.on('disconnect', () => {
+                console.clear();
+            });
 
             socket.on('connect', () => {
-                socket.emit('join', {
-                    userId: currentUser.id,
-                    userName: currentUser.name,
-                    userAvatar: currentUser.avatar,
-                    channelId: currentChannelId
-                });
-                socket.emit('joinWhiteboard', { channelId: currentChannelId });
+                if (currentUser) {
+                    socket.emit('join', {
+                        userId: currentUser.id,
+                        userName: currentUser.name,
+                        userAvatar: currentUser.avatar,
+                        channelId: currentChannelId
+                    });
+                    socket.emit('joinWhiteboard', { channelId: currentChannelId });
+                } else {
+                    socket.emit('joinAsGuest', { channelId: currentChannelId });
+                    socket.emit('joinWhiteboard', { channelId: currentChannelId });
+                }
             });
 
             socket.on('whiteboardUpdate', (data) => {

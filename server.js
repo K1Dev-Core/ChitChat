@@ -86,9 +86,10 @@ async function initializeApp() {
         socket.emit('messageHistory', messages);
       });
 
-      socket.on('joinAsGuest', async () => {
-        const channelId = 'c1';
+      socket.on('joinAsGuest', async (data) => {
+        const channelId = data?.channelId || 'c1';
         socket.join(channelId);
+        socket.join(`whiteboard-${channelId}`);
         const messages = await chatStore.getChannelMessages(channelId);
         socket.emit('messageHistory', messages);
       });
