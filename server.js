@@ -8,7 +8,18 @@ const ChatStore = require('./models/ChatStore');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  // Behind Plesk/Nginx reverse proxy
+  path: '/socket.io/',
+  cors: {
+    // Reflect request origin (works for same-domain + subdomain setups)
+    origin: true,
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true
+});
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -17,12 +28,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: '1gb' }));
 app.use(express.urlencoded({ extended: true, limit: '1gb' }));
 
+app.set('trust proxy', 1);
+
 app.use(session({
-  secret: 'realtime-chat-secret-key-2024',
+  secret: process.env.SESSION_SECRET || 'realtime-chat-secret-key-2026',
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
+  proxy: true,
   cookie: {
-    secure: false,
+    secure: true,
+    httpOnly: true,
+    sameSite: 'none',
     maxAge: 30 * 24 * 60 * 60 * 1000
   }
 }));
@@ -127,7 +143,9 @@ async function initializeApp() {
         const channelId = data.channelId || 'c1';
         const expireMinutes = data.expireMinutes || 0;
         const isLink = data.text && (data.text.startsWith('http://') || data.text.startsWith('https://'));
-        const message = await chatStore.addMessage(channelId, userId, data.text, null, null, null, null, isLink, expireMinutes);
+        const isGif = data.text && /^(https?:\/\/).+\.gif(\?.*)?$/i.test(data.text);
+        const text = (data.text || '').trim();
+        const message = await chatStore.addMessage(channelId, userId, text, null, null, null, null, isLink, expireMinutes);
         if (message) {
           io.to(channelId).emit('newMessage', message);
           socket.to(channelId).emit('userStopTyping', {
@@ -180,14 +198,14 @@ async function initializeApp() {
           return;
         }
         const { channelId, canvasData, changeType, changeData } = data;
-        
+
         socket.to(`whiteboard-${channelId}`).emit('whiteboardUpdate', {
           channelId,
           canvasData,
           changeType,
           changeData
         });
-        
+
         if (socket.whiteboardSaveTimeout) {
           clearTimeout(socket.whiteboardSaveTimeout);
         }

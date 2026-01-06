@@ -25,7 +25,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     reconnectionDelay: 1000,
     reconnectionAttempts: 5,
     timeout: 20000,
-    transports: ['websocket', 'polling']
+
+    // Plesk/Nginx often blocks WebSocket upgrade. Force long-polling so chat works.
+    transports: ['polling'],
+    upgrade: false,
+    path: '/socket.io/'
   });
 
   socket.on('connect_error', (error) => {
@@ -1107,7 +1111,16 @@ function addMessageToDOM(message, isSequential) {
   }
 
   let linkContent = '';
-  if (message.isLink || (message.text && (message.text.startsWith('http://') || message.text.startsWith('https://')))) {
+  const isGifUrl = message.text && /^(https?:\/\/).+\.gif(\?.*)?$/i.test(message.text.trim());
+
+  if (isGifUrl) {
+    const gifUrl = escapeHtml(message.text.trim());
+    linkContent = `<div class="message-gif">
+      <a href="${gifUrl}" target="_blank" rel="noopener noreferrer" class="message-gif-link">
+        <img src="${gifUrl}" alt="gif" class="message-gif-image" loading="lazy" />
+      </a>
+    </div>`;
+  } else if (message.isLink || (message.text && (message.text.startsWith('http://') || message.text.startsWith('https://')))) {
     linkContent = `<div class="message-link">
       <a href="${escapeHtml(message.text)}" target="_blank" rel="noopener noreferrer" class="message-link-url">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

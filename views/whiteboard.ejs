@@ -373,17 +373,17 @@
         <% if (isLoggedIn && currentUser) { %>
             currentUser = {
                 id: '<%= currentUser.id %>',
-                name: '<%= currentUser.name %>',
-                avatar: '<%= currentUser.avatar %>'
+                    name: '<%= currentUser.name %>',
+                        avatar: '<%= currentUser.avatar %>'
             };
         <% } else { %>
             currentUser = {
                 id: 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                name: 'Guest',
-                avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest'
+                    name: 'Guest',
+                        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest'
             };
         <% } %>
-        let userColor = generateColorFromString(currentUser.id);
+            let userColor = generateColorFromString(currentUser.id);
 
         function generateColorFromString(str) {
             let hash = 0;
@@ -400,15 +400,22 @@
                 reconnectionDelay: 1000,
                 reconnectionAttempts: 5,
                 timeout: 20000,
-                transports: ['websocket', 'polling']
+
+                // Plesk/Nginx may block WebSocket upgrade. Force long-polling so whiteboard works.
+                transports: ['polling'],
+                upgrade: false,
+                path: '/socket.io/'
             });
+
+            // Expose for debugging (console: window.socket?.connected)
+            window.socket = socket;
 
             socket.on('connect_error', (error) => {
-                console.clear();
+                console.log('whiteboard connect_error:', error?.message || error, error);
             });
 
-            socket.on('disconnect', () => {
-                console.clear();
+            socket.on('disconnect', (reason) => {
+                console.log('whiteboard disconnected:', reason);
             });
 
             socket.on('connect', () => {
@@ -572,7 +579,7 @@
                 }
 
                 lastUpdateTime = now;
-                
+
                 if (changeData && changeData.id) {
                     socket.emit('whiteboardChange', {
                         channelId: currentChannelId,
